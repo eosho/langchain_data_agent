@@ -1,0 +1,542 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://data-agent/schemas/agent_config.schema.json",
+  "title": "Agent Configuration",
+  "description": "Configuration schema for the data agent system",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "intent_detection_agent": {
+      "$ref": "#/$defs/intent_detection_config"
+    },
+    "data_agents": {
+      "type": "array",
+      "description": "List of data agent configurations",
+      "items": {
+        "$ref": "#/$defs/data_agent_config"
+      },
+      "minItems": 1
+    },
+    "max_retries": {
+      "type": "integer",
+      "description": "Maximum SQL generation retry attempts",
+      "default": 3,
+      "minimum": 0
+    }
+  },
+  "required": [
+    "data_agents"
+  ],
+  "$defs": {
+    "llm_config": {
+      "type": "object",
+      "description": "LLM configuration settings",
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "type": "string",
+          "description": "LLM provider name",
+          "enum": [
+            "azure_openai",
+            "openai",
+            "anthropic"
+          ],
+          "default": "azure_openai"
+        },
+        "model": {
+          "type": "string",
+          "description": "Model name or deployment name"
+        },
+        "api_version": {
+          "type": "string",
+          "description": "API version for the LLM provider",
+          "default": "2024-12-01-preview"
+        },
+        "temperature": {
+          "type": "number",
+          "description": "Sampling temperature (0.0-2.0)",
+          "default": 0.0,
+          "minimum": 0.0,
+          "maximum": 2.0
+        },
+        "max_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Maximum tokens in response",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "model"
+      ]
+    },
+    "intent_detection_config": {
+      "type": "object",
+      "description": "Configuration for intent detection agent",
+      "additionalProperties": false,
+      "properties": {
+        "llm": {
+          "$ref": "#/$defs/llm_config"
+        },
+        "system_prompt": {
+          "type": "string",
+          "description": "System prompt for intent detection. Use {agent_descriptions} placeholder."
+        }
+      }
+    },
+    "column_schema": {
+      "type": "object",
+      "description": "Schema definition for a table column",
+      "additionalProperties": false,
+      "properties": {
+        "column_name": {
+          "type": "string",
+          "description": "Column name"
+        },
+        "data_type": {
+          "type": "string",
+          "description": "Column data type"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of the column"
+        },
+        "is_primary_key": {
+          "type": "boolean",
+          "description": "Whether this column is a primary key",
+          "default": false
+        },
+        "is_foreign_key": {
+          "type": "boolean",
+          "description": "Whether this column is a foreign key",
+          "default": false
+        },
+        "foreign_key_table": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Referenced table if this is a foreign key"
+        },
+        "foreign_key_column": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Referenced column if this is a foreign key"
+        },
+        "sample_values": {
+          "type": "array",
+          "description": "Example values for this column",
+          "items": {
+            "type": "string"
+          }
+        },
+        "allowed_values": {
+          "type": "object",
+          "description": "Map of allowed values with descriptions",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "column_name",
+        "data_type"
+      ]
+    },
+    "table_schema": {
+      "type": "object",
+      "description": "Schema definition for a database table",
+      "additionalProperties": false,
+      "properties": {
+        "table_name": {
+          "type": "string",
+          "description": "Table name"
+        },
+        "table_description": {
+          "type": "string",
+          "description": "Human-readable description of the table"
+        },
+        "columns": {
+          "type": "array",
+          "description": "List of column definitions",
+          "items": {
+            "$ref": "#/$defs/column_schema"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "table_name",
+        "columns"
+      ]
+    },
+    "few_shot_example": {
+      "type": "object",
+      "description": "A few-shot example for SQL generation",
+      "additionalProperties": false,
+      "properties": {
+        "question": {
+          "type": "string",
+          "description": "Natural language question"
+        },
+        "sql_query": {
+          "type": "string",
+          "description": "Expected SQL query"
+        },
+        "answer": {
+          "type": "string",
+          "description": "Expected answer or explanation"
+        }
+      },
+      "required": [
+        "question",
+        "sql_query"
+      ]
+    },
+    "datasource": {
+      "type": "object",
+      "description": "Datasource configuration with type discriminator",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/databricks_datasource"
+        },
+        {
+          "$ref": "#/$defs/cosmos_datasource"
+        },
+        {
+          "$ref": "#/$defs/postgres_datasource"
+        },
+        {
+          "$ref": "#/$defs/azure_sql_datasource"
+        },
+        {
+          "$ref": "#/$defs/synapse_datasource"
+        },
+        {
+          "$ref": "#/$defs/bigquery_datasource"
+        }
+      ]
+    },
+    "databricks_datasource": {
+      "type": "object",
+      "description": "Databricks SQL Warehouse connection",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "databricks"
+        },
+        "hostname": {
+          "type": "string",
+          "description": "Databricks workspace hostname"
+        },
+        "path": {
+          "type": "string",
+          "description": "SQL warehouse HTTP path"
+        },
+        "catalog": {
+          "type": "string",
+          "description": "Unity Catalog name",
+          "default": "hive_metastore"
+        },
+        "db_schema": {
+          "type": "string",
+          "description": "Database schema name"
+        }
+      },
+      "required": [
+        "type",
+        "hostname",
+        "path"
+      ]
+    },
+    "cosmos_datasource": {
+      "type": "object",
+      "description": "Azure Cosmos DB connection",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "cosmos"
+        },
+        "endpoint": {
+          "type": "string",
+          "description": "Cosmos DB account endpoint URL"
+        },
+        "database": {
+          "type": "string",
+          "description": "Database name"
+        },
+        "container": {
+          "type": "string",
+          "description": "Container name"
+        },
+        "use_aad": {
+          "type": "boolean",
+          "description": "Use Azure AD authentication",
+          "default": false
+        },
+        "partition_key_path": {
+          "type": "string",
+          "description": "Partition key path for the container",
+          "default": "/id"
+        }
+      },
+      "required": [
+        "type",
+        "endpoint",
+        "database",
+        "container"
+      ]
+    },
+    "postgres_datasource": {
+      "type": "object",
+      "description": "PostgreSQL connection",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "postgres"
+        },
+        "host": {
+          "type": "string",
+          "description": "PostgreSQL server hostname"
+        },
+        "port": {
+          "type": "integer",
+          "description": "PostgreSQL server port",
+          "default": 5432
+        },
+        "database": {
+          "type": "string",
+          "description": "Database name"
+        },
+        "db_schema": {
+          "type": "string",
+          "description": "Schema name",
+          "default": "public"
+        },
+        "schema": {
+          "type": "string",
+          "description": "Schema name (alias for db_schema)",
+          "default": "public"
+        },
+        "username": {
+          "type": "string",
+          "description": "Database username"
+        },
+        "password": {
+          "type": "string",
+          "description": "Database password"
+        },
+        "connection_string": {
+          "type": "string",
+          "description": "Full connection string (overrides other settings)"
+        }
+      },
+      "required": [
+        "type"
+      ]
+    },
+    "azure_sql_datasource": {
+      "type": "object",
+      "description": "Azure SQL Database connection",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "azure_sql"
+        },
+        "server": {
+          "type": "string",
+          "description": "SQL server hostname"
+        },
+        "database": {
+          "type": "string",
+          "description": "Database name"
+        },
+        "db_schema": {
+          "type": "string",
+          "description": "Schema name",
+          "default": "dbo"
+        },
+        "username": {
+          "type": "string",
+          "description": "Database username"
+        },
+        "password": {
+          "type": "string",
+          "description": "Database password"
+        },
+        "use_aad": {
+          "type": "boolean",
+          "description": "Use Azure AD authentication",
+          "default": false
+        }
+      },
+      "required": [
+        "type",
+        "server",
+        "database"
+      ]
+    },
+    "synapse_datasource": {
+      "type": "object",
+      "description": "Azure Synapse Analytics connection",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "synapse"
+        },
+        "server": {
+          "type": "string",
+          "description": "Synapse SQL endpoint"
+        },
+        "database": {
+          "type": "string",
+          "description": "Database name"
+        },
+        "db_schema": {
+          "type": "string",
+          "description": "Schema name",
+          "default": "dbo"
+        },
+        "username": {
+          "type": "string",
+          "description": "Database username"
+        },
+        "password": {
+          "type": "string",
+          "description": "Database password"
+        },
+        "use_aad": {
+          "type": "boolean",
+          "description": "Use Azure AD authentication",
+          "default": false
+        }
+      },
+      "required": [
+        "type",
+        "server",
+        "database"
+      ]
+    },
+    "bigquery_datasource": {
+      "type": "object",
+      "description": "Google BigQuery connection",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "bigquery"
+        },
+        "project": {
+          "type": "string",
+          "description": "Google Cloud project ID"
+        },
+        "project_id": {
+          "type": "string",
+          "description": "Google Cloud project ID (alias)"
+        },
+        "dataset": {
+          "type": "string",
+          "description": "BigQuery dataset name"
+        },
+        "location": {
+          "type": "string",
+          "description": "BigQuery dataset location"
+        },
+        "credentials_path": {
+          "type": "string",
+          "description": "Path to service account credentials JSON"
+        }
+      },
+      "required": [
+        "type",
+        "dataset"
+      ],
+      "anyOf": [
+        {
+          "required": [
+            "project"
+          ]
+        },
+        {
+          "required": [
+            "project_id"
+          ]
+        }
+      ]
+    },
+    "validation_config": {
+      "type": "object",
+      "description": "SQL validation settings",
+      "additionalProperties": false,
+      "properties": {
+        "max_rows": {
+          "type": "integer",
+          "description": "Maximum rows allowed in query results (enforced via LIMIT)",
+          "default": 10000,
+          "minimum": 1
+        },
+        "blocked_functions": {
+          "type": "array",
+          "description": "Additional SQL functions to block beyond defaults",
+          "items": {
+            "type": "string"
+          },
+          "examples": [["get_current_user", "session_user", "system_user"]]
+        }
+      }
+    },
+    "data_agent_config": {
+      "type": "object",
+      "description": "Configuration for a single data agent",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Unique data agent identifier"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description for intent routing"
+        },
+        "datasource": {
+          "$ref": "#/$defs/datasource"
+        },
+        "llm": {
+          "$ref": "#/$defs/llm_config"
+        },
+        "validation": {
+          "$ref": "#/$defs/validation_config"
+        },
+        "system_prompt": {
+          "type": "string",
+          "description": "System prompt for SQL generation"
+        },
+        "response_prompt": {
+          "type": "string",
+          "description": "System prompt for response generation"
+        },
+        "table_schemas": {
+          "type": "array",
+          "description": "List of table schema definitions",
+          "items": {
+            "$ref": "#/$defs/table_schema"
+          }
+        },
+        "few_shot_examples": {
+          "type": "array",
+          "description": "List of few-shot examples for SQL generation",
+          "items": {
+            "$ref": "#/$defs/few_shot_example"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "datasource"
+      ]
+    }
+  }
+}

@@ -1,0 +1,682 @@
+{
+  "products": [
+    {
+      "id": "prod-001",
+      "name": "Wireless Bluetooth Headphones Pro",
+      "category": "electronics",
+      "price": 149.99,
+      "inventory_count": 245,
+      "tags": ["wireless", "bluetooth", "audio", "premium"],
+      "variants": [
+        {"sku": "WBH-BLK", "color": "Black", "size": null},
+        {"sku": "WBH-WHT", "color": "White", "size": null},
+        {"sku": "WBH-NAV", "color": "Navy Blue", "size": null}
+      ],
+      "is_active": true,
+      "created_at": "2025-01-15T10:30:00Z"
+    },
+    {
+      "id": "prod-002",
+      "name": "4K Ultra HD Smart TV 55\"",
+      "category": "electronics",
+      "price": 699.99,
+      "inventory_count": 52,
+      "tags": ["tv", "4k", "smart", "streaming"],
+      "variants": [],
+      "is_active": true,
+      "created_at": "2025-02-01T14:00:00Z"
+    },
+    {
+      "id": "prod-003",
+      "name": "Portable Power Bank 20000mAh",
+      "category": "electronics",
+      "price": 49.99,
+      "inventory_count": 890,
+      "tags": ["portable", "charging", "travel", "sale"],
+      "variants": [
+        {"sku": "PPB-BLK", "color": "Black", "size": null},
+        {"sku": "PPB-SLV", "color": "Silver", "size": null}
+      ],
+      "is_active": true,
+      "created_at": "2025-02-15T09:00:00Z"
+    },
+    {
+      "id": "prod-004",
+      "name": "Mechanical Gaming Keyboard RGB",
+      "category": "electronics",
+      "price": 129.99,
+      "inventory_count": 178,
+      "tags": ["gaming", "keyboard", "rgb", "mechanical"],
+      "variants": [
+        {"sku": "MGK-US", "color": "Black", "size": "US Layout"},
+        {"sku": "MGK-UK", "color": "Black", "size": "UK Layout"}
+      ],
+      "is_active": true,
+      "created_at": "2025-03-01T11:30:00Z"
+    },
+    {
+      "id": "prod-005",
+      "name": "Wireless Gaming Mouse",
+      "category": "electronics",
+      "price": 79.99,
+      "inventory_count": 312,
+      "tags": ["gaming", "mouse", "wireless", "ergonomic"],
+      "variants": [
+        {"sku": "WGM-BLK", "color": "Black", "size": null},
+        {"sku": "WGM-WHT", "color": "White", "size": null}
+      ],
+      "is_active": true,
+      "created_at": "2025-03-10T08:45:00Z"
+    },
+    {
+      "id": "prod-006",
+      "name": "USB-C Hub 7-in-1",
+      "category": "electronics",
+      "price": 59.99,
+      "inventory_count": 5,
+      "tags": ["usb", "hub", "connectivity", "laptop"],
+      "variants": [],
+      "is_active": true,
+      "created_at": "2025-03-20T13:15:00Z"
+    },
+    {
+      "id": "prod-007",
+      "name": "Noise Cancelling Earbuds",
+      "category": "electronics",
+      "price": 199.99,
+      "inventory_count": 156,
+      "tags": ["earbuds", "noise-cancelling", "wireless", "premium", "sale"],
+      "variants": [
+        {"sku": "NCE-BLK", "color": "Black", "size": null},
+        {"sku": "NCE-WHT", "color": "White", "size": null},
+        {"sku": "NCE-GRN", "color": "Forest Green", "size": null}
+      ],
+      "is_active": true,
+      "created_at": "2025-04-01T10:00:00Z"
+    },
+    {
+      "id": "prod-008",
+      "name": "Smart Watch Series 5",
+      "category": "electronics",
+      "price": 349.99,
+      "inventory_count": 89,
+      "tags": ["smartwatch", "fitness", "health", "wearable"],
+      "variants": [
+        {"sku": "SW5-40-BLK", "color": "Black", "size": "40mm"},
+        {"sku": "SW5-44-BLK", "color": "Black", "size": "44mm"},
+        {"sku": "SW5-40-SLV", "color": "Silver", "size": "40mm"},
+        {"sku": "SW5-44-SLV", "color": "Silver", "size": "44mm"}
+      ],
+      "is_active": true,
+      "created_at": "2025-04-15T16:30:00Z"
+    },
+    {
+      "id": "prod-009",
+      "name": "Tablet Pro 12.9\"",
+      "category": "electronics",
+      "price": 899.99,
+      "inventory_count": 34,
+      "tags": ["tablet", "professional", "creative", "portable"],
+      "variants": [
+        {"sku": "TP12-128", "color": "Space Gray", "size": "128GB"},
+        {"sku": "TP12-256", "color": "Space Gray", "size": "256GB"},
+        {"sku": "TP12-512", "color": "Space Gray", "size": "512GB"}
+      ],
+      "is_active": true,
+      "created_at": "2025-05-01T09:00:00Z"
+    },
+    {
+      "id": "prod-010",
+      "name": "Webcam HD 1080p",
+      "category": "electronics",
+      "price": 69.99,
+      "inventory_count": 423,
+      "tags": ["webcam", "streaming", "video", "work-from-home", "sale"],
+      "variants": [],
+      "is_active": true,
+      "created_at": "2025-05-15T11:00:00Z"
+    },
+    {
+      "id": "prod-011",
+      "name": "Classic Fit Cotton T-Shirt",
+      "category": "clothing",
+      "price": 24.99,
+      "inventory_count": 1250,
+      "tags": ["casual", "cotton", "basics", "everyday"],
+      "variants": [
+        {"sku": "TSH-WHT-S", "color": "White", "size": "S"},
+        {"sku": "TSH-WHT-M", "color": "White", "size": "M"},
+        {"sku": "TSH-WHT-L", "color": "White", "size": "L"},
+        {"sku": "TSH-WHT-XL", "color": "White", "size": "XL"},
+        {"sku": "TSH-BLK-S", "color": "Black", "size": "S"},
+        {"sku": "TSH-BLK-M", "color": "Black", "size": "M"},
+        {"sku": "TSH-BLK-L", "color": "Black", "size": "L"},
+        {"sku": "TSH-BLK-XL", "color": "Black", "size": "XL"},
+        {"sku": "TSH-NAV-S", "color": "Navy", "size": "S"},
+        {"sku": "TSH-NAV-M", "color": "Navy", "size": "M"},
+        {"sku": "TSH-NAV-L", "color": "Navy", "size": "L"},
+        {"sku": "TSH-NAV-XL", "color": "Navy", "size": "XL"}
+      ],
+      "is_active": true,
+      "created_at": "2025-01-01T08:00:00Z"
+    },
+    {
+      "id": "prod-012",
+      "name": "Slim Fit Jeans",
+      "category": "clothing",
+      "price": 59.99,
+      "inventory_count": 678,
+      "tags": ["denim", "casual", "everyday", "slim-fit"],
+      "variants": [
+        {"sku": "JNS-BLU-30", "color": "Blue", "size": "30"},
+        {"sku": "JNS-BLU-32", "color": "Blue", "size": "32"},
+        {"sku": "JNS-BLU-34", "color": "Blue", "size": "34"},
+        {"sku": "JNS-BLU-36", "color": "Blue", "size": "36"},
+        {"sku": "JNS-BLK-30", "color": "Black", "size": "30"},
+        {"sku": "JNS-BLK-32", "color": "Black", "size": "32"},
+        {"sku": "JNS-BLK-34", "color": "Black", "size": "34"},
+        {"sku": "JNS-BLK-36", "color": "Black", "size": "36"}
+      ],
+      "is_active": true,
+      "created_at": "2025-01-10T10:30:00Z"
+    },
+    {
+      "id": "prod-013",
+      "name": "Wool Blend Sweater",
+      "category": "clothing",
+      "price": 89.99,
+      "inventory_count": 234,
+      "tags": ["winter", "wool", "cozy", "premium", "sale"],
+      "variants": [
+        {"sku": "SWT-GRY-S", "color": "Gray", "size": "S"},
+        {"sku": "SWT-GRY-M", "color": "Gray", "size": "M"},
+        {"sku": "SWT-GRY-L", "color": "Gray", "size": "L"},
+        {"sku": "SWT-BRG-S", "color": "Burgundy", "size": "S"},
+        {"sku": "SWT-BRG-M", "color": "Burgundy", "size": "M"},
+        {"sku": "SWT-BRG-L", "color": "Burgundy", "size": "L"}
+      ],
+      "is_active": true,
+      "created_at": "2025-02-01T14:00:00Z"
+    },
+    {
+      "id": "prod-014",
+      "name": "Waterproof Rain Jacket",
+      "category": "clothing",
+      "price": 129.99,
+      "inventory_count": 156,
+      "tags": ["outerwear", "waterproof", "rain", "outdoor"],
+      "variants": [
+        {"sku": "RJK-BLK-S", "color": "Black", "size": "S"},
+        {"sku": "RJK-BLK-M", "color": "Black", "size": "M"},
+        {"sku": "RJK-BLK-L", "color": "Black", "size": "L"},
+        {"sku": "RJK-BLK-XL", "color": "Black", "size": "XL"},
+        {"sku": "RJK-NVY-S", "color": "Navy", "size": "S"},
+        {"sku": "RJK-NVY-M", "color": "Navy", "size": "M"},
+        {"sku": "RJK-NVY-L", "color": "Navy", "size": "L"},
+        {"sku": "RJK-NVY-XL", "color": "Navy", "size": "XL"}
+      ],
+      "is_active": true,
+      "created_at": "2025-02-20T09:15:00Z"
+    },
+    {
+      "id": "prod-015",
+      "name": "Running Shorts",
+      "category": "clothing",
+      "price": 34.99,
+      "inventory_count": 890,
+      "tags": ["athletic", "running", "sports", "breathable"],
+      "variants": [
+        {"sku": "RSH-BLK-S", "color": "Black", "size": "S"},
+        {"sku": "RSH-BLK-M", "color": "Black", "size": "M"},
+        {"sku": "RSH-BLK-L", "color": "Black", "size": "L"},
+        {"sku": "RSH-GRY-S", "color": "Gray", "size": "S"},
+        {"sku": "RSH-GRY-M", "color": "Gray", "size": "M"},
+        {"sku": "RSH-GRY-L", "color": "Gray", "size": "L"}
+      ],
+      "is_active": true,
+      "created_at": "2025-03-05T11:30:00Z"
+    },
+    {
+      "id": "prod-016",
+      "name": "Formal Dress Shirt",
+      "category": "clothing",
+      "price": 69.99,
+      "inventory_count": 3,
+      "tags": ["formal", "business", "dress-shirt", "office"],
+      "variants": [
+        {"sku": "DSH-WHT-S", "color": "White", "size": "S"},
+        {"sku": "DSH-WHT-M", "color": "White", "size": "M"},
+        {"sku": "DSH-WHT-L", "color": "White", "size": "L"},
+        {"sku": "DSH-BLU-S", "color": "Light Blue", "size": "S"},
+        {"sku": "DSH-BLU-M", "color": "Light Blue", "size": "M"},
+        {"sku": "DSH-BLU-L", "color": "Light Blue", "size": "L"}
+      ],
+      "is_active": true,
+      "created_at": "2025-03-15T08:45:00Z"
+    },
+    {
+      "id": "prod-017",
+      "name": "Yoga Pants",
+      "category": "clothing",
+      "price": 54.99,
+      "inventory_count": 567,
+      "tags": ["athletic", "yoga", "comfortable", "stretchy", "sale"],
+      "variants": [
+        {"sku": "YGP-BLK-XS", "color": "Black", "size": "XS"},
+        {"sku": "YGP-BLK-S", "color": "Black", "size": "S"},
+        {"sku": "YGP-BLK-M", "color": "Black", "size": "M"},
+        {"sku": "YGP-BLK-L", "color": "Black", "size": "L"},
+        {"sku": "YGP-NVY-XS", "color": "Navy", "size": "XS"},
+        {"sku": "YGP-NVY-S", "color": "Navy", "size": "S"},
+        {"sku": "YGP-NVY-M", "color": "Navy", "size": "M"},
+        {"sku": "YGP-NVY-L", "color": "Navy", "size": "L"}
+      ],
+      "is_active": true,
+      "created_at": "2025-04-01T10:00:00Z"
+    },
+    {
+      "id": "prod-018",
+      "name": "Down Winter Jacket",
+      "category": "clothing",
+      "price": 199.99,
+      "inventory_count": 89,
+      "tags": ["winter", "warm", "down", "outerwear", "premium"],
+      "variants": [
+        {"sku": "DWJ-BLK-S", "color": "Black", "size": "S"},
+        {"sku": "DWJ-BLK-M", "color": "Black", "size": "M"},
+        {"sku": "DWJ-BLK-L", "color": "Black", "size": "L"},
+        {"sku": "DWJ-BLK-XL", "color": "Black", "size": "XL"}
+      ],
+      "is_active": true,
+      "created_at": "2025-04-20T14:30:00Z"
+    },
+    {
+      "id": "prod-019",
+      "name": "Casual Polo Shirt",
+      "category": "clothing",
+      "price": 44.99,
+      "inventory_count": 445,
+      "tags": ["casual", "polo", "smart-casual", "everyday"],
+      "variants": [
+        {"sku": "POL-WHT-S", "color": "White", "size": "S"},
+        {"sku": "POL-WHT-M", "color": "White", "size": "M"},
+        {"sku": "POL-WHT-L", "color": "White", "size": "L"},
+        {"sku": "POL-NVY-S", "color": "Navy", "size": "S"},
+        {"sku": "POL-NVY-M", "color": "Navy", "size": "M"},
+        {"sku": "POL-NVY-L", "color": "Navy", "size": "L"},
+        {"sku": "POL-GRN-S", "color": "Green", "size": "S"},
+        {"sku": "POL-GRN-M", "color": "Green", "size": "M"},
+        {"sku": "POL-GRN-L", "color": "Green", "size": "L"}
+      ],
+      "is_active": true,
+      "created_at": "2025-05-05T09:00:00Z"
+    },
+    {
+      "id": "prod-020",
+      "name": "Athletic Hoodie",
+      "category": "clothing",
+      "price": 64.99,
+      "inventory_count": 312,
+      "tags": ["athletic", "hoodie", "casual", "comfortable"],
+      "variants": [
+        {"sku": "AHD-GRY-S", "color": "Gray", "size": "S"},
+        {"sku": "AHD-GRY-M", "color": "Gray", "size": "M"},
+        {"sku": "AHD-GRY-L", "color": "Gray", "size": "L"},
+        {"sku": "AHD-BLK-S", "color": "Black", "size": "S"},
+        {"sku": "AHD-BLK-M", "color": "Black", "size": "M"},
+        {"sku": "AHD-BLK-L", "color": "Black", "size": "L"}
+      ],
+      "is_active": true,
+      "created_at": "2025-05-20T11:15:00Z"
+    },
+    {
+      "id": "prod-021",
+      "name": "Stainless Steel Cookware Set",
+      "category": "home",
+      "price": 249.99,
+      "inventory_count": 67,
+      "tags": ["kitchen", "cookware", "stainless-steel", "premium"],
+      "variants": [
+        {"sku": "SSCS-10PC", "color": "Silver", "size": "10-piece"}
+      ],
+      "is_active": true,
+      "created_at": "2025-01-05T10:00:00Z"
+    },
+    {
+      "id": "prod-022",
+      "name": "Memory Foam Pillow Set",
+      "category": "home",
+      "price": 79.99,
+      "inventory_count": 234,
+      "tags": ["bedroom", "sleep", "comfort", "memory-foam", "sale"],
+      "variants": [
+        {"sku": "MFP-STD", "color": "White", "size": "Standard"},
+        {"sku": "MFP-KNG", "color": "White", "size": "King"}
+      ],
+      "is_active": true,
+      "created_at": "2025-01-20T13:30:00Z"
+    },
+    {
+      "id": "prod-023",
+      "name": "Smart LED Bulb 4-Pack",
+      "category": "home",
+      "price": 39.99,
+      "inventory_count": 567,
+      "tags": ["smart-home", "lighting", "led", "wifi"],
+      "variants": [],
+      "is_active": true,
+      "created_at": "2025-02-10T09:45:00Z"
+    },
+    {
+      "id": "prod-024",
+      "name": "Robot Vacuum Cleaner",
+      "category": "home",
+      "price": 349.99,
+      "inventory_count": 45,
+      "tags": ["cleaning", "robot", "smart-home", "vacuum"],
+      "variants": [
+        {"sku": "RVC-BLK", "color": "Black", "size": null},
+        {"sku": "RVC-WHT", "color": "White", "size": null}
+      ],
+      "is_active": true,
+      "created_at": "2025-02-25T14:00:00Z"
+    },
+    {
+      "id": "prod-025",
+      "name": "Bamboo Cutting Board Set",
+      "category": "home",
+      "price": 34.99,
+      "inventory_count": 890,
+      "tags": ["kitchen", "bamboo", "eco-friendly", "cooking"],
+      "variants": [
+        {"sku": "BCB-3PC", "color": "Natural", "size": "3-piece"}
+      ],
+      "is_active": true,
+      "created_at": "2025-03-10T08:30:00Z"
+    },
+    {
+      "id": "prod-026",
+      "name": "Air Purifier HEPA",
+      "category": "home",
+      "price": 179.99,
+      "inventory_count": 8,
+      "tags": ["air-quality", "health", "hepa", "home-appliance"],
+      "variants": [
+        {"sku": "APH-SML", "color": "White", "size": "Small Room"},
+        {"sku": "APH-LRG", "color": "White", "size": "Large Room"}
+      ],
+      "is_active": true,
+      "created_at": "2025-03-25T11:00:00Z"
+    },
+    {
+      "id": "prod-027",
+      "name": "Ceramic Plant Pots Set",
+      "category": "home",
+      "price": 44.99,
+      "inventory_count": 312,
+      "tags": ["garden", "decor", "ceramic", "plants", "sale"],
+      "variants": [
+        {"sku": "CPP-WHT", "color": "White", "size": "3-piece"},
+        {"sku": "CPP-TER", "color": "Terracotta", "size": "3-piece"}
+      ],
+      "is_active": true,
+      "created_at": "2025-04-05T10:15:00Z"
+    },
+    {
+      "id": "prod-028",
+      "name": "Blackout Curtains",
+      "category": "home",
+      "price": 54.99,
+      "inventory_count": 178,
+      "tags": ["bedroom", "curtains", "blackout", "sleep"],
+      "variants": [
+        {"sku": "BOC-GRY-84", "color": "Gray", "size": "84 inch"},
+        {"sku": "BOC-GRY-96", "color": "Gray", "size": "96 inch"},
+        {"sku": "BOC-NVY-84", "color": "Navy", "size": "84 inch"},
+        {"sku": "BOC-NVY-96", "color": "Navy", "size": "96 inch"}
+      ],
+      "is_active": true,
+      "created_at": "2025-04-20T13:45:00Z"
+    },
+    {
+      "id": "prod-029",
+      "name": "Electric Kettle",
+      "category": "home",
+      "price": 49.99,
+      "inventory_count": 456,
+      "tags": ["kitchen", "appliance", "tea", "coffee"],
+      "variants": [
+        {"sku": "EKT-SLV", "color": "Silver", "size": "1.7L"},
+        {"sku": "EKT-BLK", "color": "Black", "size": "1.7L"}
+      ],
+      "is_active": true,
+      "created_at": "2025-05-01T09:30:00Z"
+    },
+    {
+      "id": "prod-030",
+      "name": "Throw Blanket Sherpa",
+      "category": "home",
+      "price": 39.99,
+      "inventory_count": 623,
+      "tags": ["cozy", "blanket", "sherpa", "living-room"],
+      "variants": [
+        {"sku": "TBS-GRY", "color": "Gray", "size": "50x60"},
+        {"sku": "TBS-BEG", "color": "Beige", "size": "50x60"},
+        {"sku": "TBS-BLU", "color": "Blue", "size": "50x60"}
+      ],
+      "is_active": true,
+      "created_at": "2025-05-15T14:00:00Z"
+    },
+    {
+      "id": "prod-031",
+      "name": "Professional Basketball",
+      "category": "sports",
+      "price": 29.99,
+      "inventory_count": 345,
+      "tags": ["basketball", "outdoor", "sports", "official-size"],
+      "variants": [
+        {"sku": "BBL-ORG", "color": "Orange", "size": "Official"}
+      ],
+      "is_active": true,
+      "created_at": "2025-01-10T08:00:00Z"
+    },
+    {
+      "id": "prod-032",
+      "name": "Yoga Mat Premium",
+      "category": "sports",
+      "price": 49.99,
+      "inventory_count": 567,
+      "tags": ["yoga", "fitness", "exercise", "non-slip", "sale"],
+      "variants": [
+        {"sku": "YMP-PRP", "color": "Purple", "size": "6mm"},
+        {"sku": "YMP-BLK", "color": "Black", "size": "6mm"},
+        {"sku": "YMP-BLU", "color": "Blue", "size": "6mm"}
+      ],
+      "is_active": true,
+      "created_at": "2025-01-25T10:30:00Z"
+    },
+    {
+      "id": "prod-033",
+      "name": "Adjustable Dumbbell Set",
+      "category": "sports",
+      "price": 299.99,
+      "inventory_count": 89,
+      "tags": ["weights", "strength", "home-gym", "adjustable"],
+      "variants": [
+        {"sku": "ADS-25", "color": "Black", "size": "5-25 lbs"},
+        {"sku": "ADS-50", "color": "Black", "size": "5-50 lbs"}
+      ],
+      "is_active": true,
+      "created_at": "2025-02-05T11:45:00Z"
+    },
+    {
+      "id": "prod-034",
+      "name": "Running Shoes TrailMaster",
+      "category": "sports",
+      "price": 139.99,
+      "inventory_count": 234,
+      "tags": ["running", "shoes", "trail", "outdoor"],
+      "variants": [
+        {"sku": "RTM-BLK-8", "color": "Black", "size": "8"},
+        {"sku": "RTM-BLK-9", "color": "Black", "size": "9"},
+        {"sku": "RTM-BLK-10", "color": "Black", "size": "10"},
+        {"sku": "RTM-BLK-11", "color": "Black", "size": "11"},
+        {"sku": "RTM-GRY-8", "color": "Gray", "size": "8"},
+        {"sku": "RTM-GRY-9", "color": "Gray", "size": "9"},
+        {"sku": "RTM-GRY-10", "color": "Gray", "size": "10"},
+        {"sku": "RTM-GRY-11", "color": "Gray", "size": "11"}
+      ],
+      "is_active": true,
+      "created_at": "2025-02-20T14:15:00Z"
+    },
+    {
+      "id": "prod-035",
+      "name": "Tennis Racket Pro",
+      "category": "sports",
+      "price": 189.99,
+      "inventory_count": 67,
+      "tags": ["tennis", "racket", "professional", "sports"],
+      "variants": [
+        {"sku": "TRP-BLK", "color": "Black/Red", "size": "Grip 4 1/4"}
+      ],
+      "is_active": true,
+      "created_at": "2025-03-05T09:00:00Z"
+    },
+    {
+      "id": "prod-036",
+      "name": "Resistance Bands Set",
+      "category": "sports",
+      "price": 24.99,
+      "inventory_count": 890,
+      "tags": ["fitness", "resistance", "portable", "workout", "sale"],
+      "variants": [
+        {"sku": "RBS-5PC", "color": "Multi", "size": "5-piece"}
+      ],
+      "is_active": true,
+      "created_at": "2025-03-20T13:30:00Z"
+    },
+    {
+      "id": "prod-037",
+      "name": "Camping Tent 4-Person",
+      "category": "sports",
+      "price": 179.99,
+      "inventory_count": 2,
+      "tags": ["camping", "outdoor", "tent", "adventure"],
+      "variants": [
+        {"sku": "CT4-GRN", "color": "Green", "size": "4-Person"},
+        {"sku": "CT4-BLU", "color": "Blue", "size": "4-Person"}
+      ],
+      "is_active": true,
+      "created_at": "2025-04-01T08:45:00Z"
+    },
+    {
+      "id": "prod-038",
+      "name": "Cycling Helmet",
+      "category": "sports",
+      "price": 79.99,
+      "inventory_count": 178,
+      "tags": ["cycling", "safety", "helmet", "bike"],
+      "variants": [
+        {"sku": "CHM-BLK-S", "color": "Black", "size": "S"},
+        {"sku": "CHM-BLK-M", "color": "Black", "size": "M"},
+        {"sku": "CHM-BLK-L", "color": "Black", "size": "L"},
+        {"sku": "CHM-WHT-S", "color": "White", "size": "S"},
+        {"sku": "CHM-WHT-M", "color": "White", "size": "M"},
+        {"sku": "CHM-WHT-L", "color": "White", "size": "L"}
+      ],
+      "is_active": true,
+      "created_at": "2025-04-15T10:00:00Z"
+    },
+    {
+      "id": "prod-039",
+      "name": "Swimming Goggles",
+      "category": "sports",
+      "price": 19.99,
+      "inventory_count": 567,
+      "tags": ["swimming", "goggles", "pool", "water-sports"],
+      "variants": [
+        {"sku": "SGG-BLK", "color": "Black", "size": "Adult"},
+        {"sku": "SGG-BLU", "color": "Blue", "size": "Adult"}
+      ],
+      "is_active": true,
+      "created_at": "2025-05-01T11:30:00Z"
+    },
+    {
+      "id": "prod-040",
+      "name": "Golf Club Set",
+      "category": "sports",
+      "price": 599.99,
+      "inventory_count": 23,
+      "tags": ["golf", "clubs", "professional", "outdoor"],
+      "variants": [
+        {"sku": "GCS-RH", "color": "Silver/Black", "size": "Right-Handed"},
+        {"sku": "GCS-LH", "color": "Silver/Black", "size": "Left-Handed"}
+      ],
+      "is_active": true,
+      "created_at": "2025-05-15T14:45:00Z"
+    },
+    {
+      "id": "prod-041",
+      "name": "Vintage Record Player",
+      "category": "electronics",
+      "price": 249.99,
+      "inventory_count": 34,
+      "tags": ["vinyl", "retro", "audio", "vintage"],
+      "variants": [
+        {"sku": "VRP-WD", "color": "Wood", "size": null}
+      ],
+      "is_active": true,
+      "created_at": "2025-06-01T10:00:00Z"
+    },
+    {
+      "id": "prod-042",
+      "name": "Discontinued Cassette Player",
+      "category": "electronics",
+      "price": 89.99,
+      "inventory_count": 12,
+      "tags": ["retro", "audio", "cassette"],
+      "variants": [],
+      "is_active": false,
+      "created_at": "2024-01-15T09:00:00Z"
+    },
+    {
+      "id": "prod-043",
+      "name": "Winter Gloves Thermal",
+      "category": "clothing",
+      "price": 29.99,
+      "inventory_count": 456,
+      "tags": ["winter", "gloves", "thermal", "cold-weather"],
+      "variants": [
+        {"sku": "WGT-BLK-S", "color": "Black", "size": "S"},
+        {"sku": "WGT-BLK-M", "color": "Black", "size": "M"},
+        {"sku": "WGT-BLK-L", "color": "Black", "size": "L"}
+      ],
+      "is_active": true,
+      "created_at": "2025-06-10T11:30:00Z"
+    },
+    {
+      "id": "prod-044",
+      "name": "Garden Hose 50ft",
+      "category": "home",
+      "price": 39.99,
+      "inventory_count": 234,
+      "tags": ["garden", "outdoor", "watering", "hose"],
+      "variants": [],
+      "is_active": true,
+      "created_at": "2025-06-15T08:15:00Z"
+    },
+    {
+      "id": "prod-045",
+      "name": "Soccer Ball Official",
+      "category": "sports",
+      "price": 34.99,
+      "inventory_count": 678,
+      "tags": ["soccer", "football", "official", "outdoor", "sale"],
+      "variants": [
+        {"sku": "SOB-5", "color": "White/Black", "size": "Size 5"}
+      ],
+      "is_active": true,
+      "created_at": "2025-06-20T13:00:00Z"
+    }
+  ]
+}

@@ -1,0 +1,283 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "data-agent"
+version = "0.5.0"
+description = "NL2SQL Query & Retrieval Platform - Natural language to SQL conversion with multi-datasource support"
+authors = [{ name = "Your Name", email = "your.email@example.com" }]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "langgraph>=1.0.5",
+    "langchain>=1.2.0",
+    "langchain-openai>=1.1.3",
+    "langchain-community>=0.4.1",
+    "pydantic>=2.12.5",
+    "pydantic-settings>=2.12.0",
+    "jsonschema>=4.0.0",
+    "sqlglot[rs]>=26.0.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.2.1",
+    "databricks-sql-connector>=4.2.2",
+    "asyncpg>=0.29.0",
+    "psycopg[binary]>=3.1.0",
+    "nest-asyncio>=1.6.0",
+    "azure-cosmos>=4.7.0",
+    "aiohttp>=3.9.0",
+    "structlog>=24.0.0",
+    "typing-extensions>=4.12",
+    "azure-identity>=1.25.1",
+    "azure-keyvault-secrets>=4.10.0",
+    "langgraph-cli[inmem]>=0.4.10",
+    "langgraph-api>=0.5.42",
+    "pyodbc>=5.3.0",
+    "google-cloud-bigquery>=3.39.0",
+    "fastapi>=0.124.4",
+    "uvicorn>=0.38.0",
+    "typer>=0.15.0",
+    "rich>=14.0.0",
+    "chainlit>=2.0.0",
+    "pandas>=2.0.0",
+    "tabulate>=0.9.0",
+    "a2a-sdk[http-server]>=0.3.22",
+    "httpx>=0.27.0",
+    "sqlalchemy>=2.0.45",
+    "sqlalchemy-bigquery>=1.16.0",
+    "databricks-sqlalchemy>=2.0.8",
+    "google-cloud-bigquery-storage>=2.36.0",
+    "psycopg2>=2.9.11",
+]
+
+[project.scripts]
+data-agent = "data_agent.cli:main"
+data-agent-ui = "data_agent.ui:main"
+data-agent-a2a = "data_agent.a2a.server:main"
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "pre-commit",
+    "ruff",
+    "poethepoet",
+    "radon",
+    "skylos",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.12.0",
+    "autoflake>=2.3.1",
+    "isort>=7.0.0",
+]
+
+# Azure AI Foundry hosting dependencies
+foundry = [
+    "azure-ai-agentserver-langgraph>=0.1.0",
+    "azure-ai-projects>=1.0.0",
+    "azure-identity>=1.25.1",
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["data_agent*"]
+exclude = ["tests*", "scripts*", "docs*", "examples*", "configs*"]
+
+# ============================================================
+# POE THE POET - Task Runner
+# ============================================================
+[tool.poe.tasks]
+# Run with: poe format or uv run poe format
+# Formats code, fixes issues, and type checks
+format = [
+    {cmd = "ruff format ."},
+    {cmd = "ruff check . --fix"},
+]
+
+# Run with: poe check
+# Lint and type check without fixing
+check = [
+    {cmd = "ruff check ."},
+]
+
+# Run with: poe lint or uv run poe lint
+# Only linting, no type checking
+lint = {cmd = "ruff check . --fix"}
+
+# Run with: poe lint-unsafe or uv run poe lint-unsafe
+# Lint with unsafe fixes enabled (more aggressive)
+lint-unsafe = {cmd = "ruff check . --fix --unsafe-fixes"}
+
+# Run with: poe metrics or uv run poe metrics
+# Check code quality: dead code, complexity, and maintainability
+metrics = [
+    {cmd = "skylos . --quality"},
+    {cmd = "radon cc . -a -nb"},
+    {cmd = "radon mi . -nb"}
+]
+
+# Run with: poe quality or uv run poe quality
+# Full quality check: format, lint, type check, and metrics
+quality = [
+    {cmd = "ruff format ."},
+    {cmd = "ruff check . --fix"},
+    {cmd = "radon cc . -a -nb"},
+    {cmd = "skylos . --quality --danger"},
+]
+
+# ============================================================
+# RUFF CONFIGURATION - MAXIMUM STRICTNESS
+# ============================================================
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+indent-width = 4
+fix = true
+show-fixes = true
+preview = true  # Enable preview rules (PLR1702, etc.)
+exclude = ["scripts"]
+
+[tool.ruff.lint]
+# Comprehensive rule set for strict checking
+select = [
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "I",      # isort
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "BLE",    # flake8-blind-except (no bare except:)
+    "C4",     # flake8-comprehensions
+    "C90",    # mccabe complexity
+    "T20",    # flake8-print (no print statements)
+    "SIM",    # flake8-simplify
+    "N",      # pep8-naming
+    "Q",      # flake8-quotes
+    "RUF",    # Ruff-specific rules
+    "ASYNC",  # flake8-async
+    "S",      # flake8-bandit (security)
+    "PTH",    # flake8-use-pathlib
+    "ERA",    # eradicate (commented-out code)
+    "PL",     # pylint (includes PLR1702: too-many-nested-blocks)
+    "PERF",   # perflint (performance)
+    "ANN",    # flake8-annotations
+    "ARG",    # flake8-unused-arguments
+    "FBT",    # flake8-boolean-trap (no boolean positional args)
+    "RET",    # flake8-return
+    "TCH",    # flake8-type-checking
+]
+
+ignore = [
+    "E501",    # Line too long (formatter handles this)
+    "S603",    # subprocess without shell=True (too strict)
+    "S607",    # Starting a process with a partial path (too strict)
+]
+
+# Complexity limits (anti-LLM-slop)
+[tool.ruff.lint.mccabe]
+max-complexity = 10  # Maximum cyclomatic complexity
+
+[tool.ruff.lint.pylint]
+max-nested-blocks = 3  # Maximum nested block depth (PLR1702)
+
+# Per-file ignores
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = [
+    "F401",    # Allow unused imports in __init__.py
+]
+"tests/**/*.py" = [
+    "S101",    # Allow assert in tests
+    "PLR2004", # Allow magic values in tests
+    "ANN",     # Don't require annotations in tests
+    "FBT",     # Allow boolean args in tests
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["data_agent"]
+combine-as-imports = true
+force-sort-within-sections = true
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.flake8-type-checking]
+strict = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+# ============================================================
+# PYTEST CONFIGURATION
+# ============================================================
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "-W error",  # STRICT: Treat warnings as errors (catch deprecations early)
+    "--tb=short",
+    "--cov=.",
+    "--cov-report=term-missing:skip-covered",
+    "--cov-report=html",
+    "--cov-report=xml",
+    "--cov-fail-under=50",  # STRICT: Require 50% coverage
+]
+filterwarnings = [
+    "error",  # Treat all warnings as errors by default
+    # Uncomment to selectively ignore specific third-party warnings if needed:
+    # "ignore::DeprecationWarning:some_noisy_library",
+    # "ignore::UserWarning:another_library",
+    "ignore::DeprecationWarning:databricks.sql",  # Databricks SDK deprecation warnings
+    "ignore::sqlalchemy.exc.SAWarning",  # SQLAlchemy caching warnings from third-party dialects
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+# ============================================================
+# COVERAGE CONFIGURATION
+# ============================================================
+[tool.coverage.run]
+source = ["."]
+branch = true  # STRICT: Enable branch coverage
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+    "*/.venv/*",
+    "*/venv/*",
+    "*/scripts/*",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+fail_under = 50  # STRICT: Require 50% coverage
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+    "@overload",
+]
+
+[dependency-groups]
+dev = [
+    "vulture>=2.14",
+]

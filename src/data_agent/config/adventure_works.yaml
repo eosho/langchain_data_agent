@@ -1,0 +1,626 @@
+intent_detection_agent:
+  llm:
+    model: gpt-5-mini
+    provider: azure_openai
+    api_version: 2024-12-01-preview
+    temperature: 1.0
+    max_tokens: 500
+  system_prompt: |
+    You are an intent detection assistant responsible for routing user questions to the appropriate data agent.
+
+    ## Available Data Agents
+
+    {agent_descriptions}
+
+    ## Instructions
+
+    1. Analyze the user's question to understand what data they are asking about.
+    2. Match the question to the most relevant data agent based on the domain and data types.
+    3. If the question is ambiguous, choose the agent most likely to have the relevant data.
+    4. If no agent is a clear match, respond with "unknown".
+
+    ## Response Format
+
+    Respond with ONLY the agent name (e.g., "contoso_hr" or "hotel_analytics"). Do not include any explanation.
+
+data_agents:
+  - name: contoso_hr
+    datasource:
+      type: azure_sql
+      server: data-agent-sql-svr.database.windows.net
+      database: data-agent-sql-db
+      use_aad: true
+    llm:
+      model: gpt-5-mini
+      provider: azure_openai
+      api_version: 2024-12-01-preview
+      temperature: 1.0
+      max_tokens: 2000
+    system_prompt: |
+      You are an expert SQL assistant for the Contoso HR database running on Azure SQL Database.
+
+      ## Your Role
+
+      Generate accurate, efficient T-SQL queries based on natural language questions. You have access to employee, department, performance review, and time-off data.
+
+      ## Database Context
+
+      {schema_context}
+
+      ## Examples
+
+      {few_shot_examples}
+
+      ## T-SQL Generation Guidelines
+
+      1. **Use only tables and columns defined in the schema above.** Never reference tables or columns not listed.
+      2. **Use T-SQL syntax.** This includes:
+         - DATEADD, DATEDIFF, DATEPART for date operations
+         - GETDATE(), GETUTCDATE() for current time
+         - TOP instead of LIMIT for row limiting
+         - NVARCHAR, INT, DECIMAL, BIT, DATE data types
+      3. **Always qualify column names** with table aliases to avoid ambiguity.
+      4. **Use appropriate JOINs** when combining data from multiple tables.
+      5. **Include WHERE clauses** to filter data when the question implies filtering.
+      6. **Use GROUP BY** for aggregations and ORDER BY for sorting results.
+      7. **Use TOP N** to limit results (e.g., TOP 100) unless the user specifies otherwise.
+      8. **Handle NULL values** appropriately with ISNULL or COALESCE.
+      9. **Use schema-qualified names** (e.g., dbo.Employees) for all table references.
+
+      ## Response Format
+
+      Provide your response as JSON with two fields:
+      - "sql_query": The generated T-SQL query
+      - "explanation": Brief explanation of what the query does
+    response_prompt: |
+      You are a helpful HR analyst for Contoso.
+
+      Given the user's question, the SQL query that was executed, and the results,
+      provide a clear and concise natural language response.
+
+      Be conversational but precise. Include relevant numbers, percentages, and insights.
+      Format currency values with $ and commas. Format large numbers for readability.
+      If the results are empty, explain what that means in context.
+
+      ## Data Presentation
+
+      When the query returns tabular data (multiple rows/columns), ALWAYS include a formatted markdown table showing the results.
+      - Use proper markdown table syntax with headers
+      - Align numeric columns to the right
+      - Format salaries with $ and commas (e.g., $125,000.00)
+      - Format dates in readable format (e.g., Dec 16, 2025)
+      - Limit tables to 20 rows max; if more rows exist, show first 20 and note "... and X more rows"
+      - After the table, provide a brief summary or insight about the data
+    table_schemas:
+      - table_name: dbo.Departments
+        table_description: Company departments with budget information
+        columns:
+          - column_name: DepartmentID
+            data_type: INT
+            description: Unique department identifier
+          - column_name: Name
+            data_type: NVARCHAR(100)
+            description: Department name
+          - column_name: Budget
+            data_type: DECIMAL(12,2)
+            description: Annual department budget in USD
+          - column_name: ManagerID
+            data_type: INT
+            description: Employee ID of the department manager
+      - table_name: dbo.Employees
+        table_description: Employee information including salary and organizational hierarchy
+        columns:
+          - column_name: EmployeeID
+            data_type: INT
+            description: Unique employee identifier
+          - column_name: FirstName
+            data_type: NVARCHAR(50)
+            description: Employee first name
+          - column_name: LastName
+            data_type: NVARCHAR(50)
+            description: Employee last name
+          - column_name: Email
+            data_type: NVARCHAR(100)
+            description: Employee email address
+          - column_name: DepartmentID
+            data_type: INT
+            description: Department the employee belongs to
+          - column_name: Title
+            data_type: NVARCHAR(100)
+            description: Job title
+          - column_name: HireDate
+            data_type: DATE
+            description: Date the employee was hired
+          - column_name: Salary
+            data_type: DECIMAL(10,2)
+            description: Annual salary in USD
+          - column_name: ManagerID
+            data_type: INT
+            description: Employee ID of the direct manager (NULL for top-level)
+          - column_name: IsActive
+            data_type: BIT
+            description: Whether the employee is currently active (1=active, 0=inactive)
+      - table_name: dbo.PerformanceReviews
+        table_description: Employee performance review records
+        columns:
+          - column_name: ReviewID
+            data_type: INT
+            description: Unique review identifier
+          - column_name: EmployeeID
+            data_type: INT
+            description: Employee being reviewed
+          - column_name: ReviewDate
+            data_type: DATE
+            description: Date of the review
+          - column_name: Rating
+            data_type: INT
+            description: Performance rating (1-5, where 5 is excellent)
+          - column_name: ReviewerID
+            data_type: INT
+            description: Employee ID of the reviewer (manager)
+          - column_name: Comments
+            data_type: NVARCHAR(500)
+            description: Review comments and feedback
+      - table_name: dbo.TimeOffRequests
+        table_description: Employee time-off and leave requests
+        columns:
+          - column_name: RequestID
+            data_type: INT
+            description: Unique request identifier
+          - column_name: EmployeeID
+            data_type: INT
+            description: Employee requesting time off
+          - column_name: StartDate
+            data_type: DATE
+            description: Start date of time off
+          - column_name: EndDate
+            data_type: DATE
+            description: End date of time off
+          - column_name: Type
+            data_type: NVARCHAR(50)
+            description: Type of time off
+            allowed_values:
+              Vacation: Paid vacation time
+              Sick: Sick leave
+              Personal: Personal day
+              Conference: Conference or training
+          - column_name: Status
+            data_type: NVARCHAR(20)
+            description: Request status
+            allowed_values:
+              Pending: Awaiting approval
+              Approved: Request approved
+              Denied: Request denied
+          - column_name: DaysRequested
+            data_type: INT
+            description: Number of days requested
+    few_shot_examples:
+      - question: How many employees are in each department?
+        answer: Engineering has 5 employees, Sales has 5 employees, Marketing has 5 employees.
+        sql_query: |
+          SELECT d.Name AS Department, COUNT(e.EmployeeID) AS EmployeeCount
+          FROM dbo.Departments d
+          LEFT JOIN dbo.Employees e ON d.DepartmentID = e.DepartmentID
+          WHERE e.IsActive = 1
+          GROUP BY d.DepartmentID, d.Name
+          ORDER BY EmployeeCount DESC
+      - question: What is the average salary by department?
+        answer: R&D has the highest average salary at $127,000, followed by Finance at $101,800.
+        sql_query: |
+          SELECT d.Name AS Department,
+                 AVG(e.Salary) AS AvgSalary,
+                 MIN(e.Salary) AS MinSalary,
+                 MAX(e.Salary) AS MaxSalary
+          FROM dbo.Departments d
+          JOIN dbo.Employees e ON d.DepartmentID = e.DepartmentID
+          WHERE e.IsActive = 1
+          GROUP BY d.DepartmentID, d.Name
+          ORDER BY AvgSalary DESC
+      - question: Who are the top performers this year?
+        answer: Emily Rodriguez, Nicole Garcia, Ashley Walker, Jessica Robinson, and Benjamin Hall all received 5-star ratings in their recent reviews.
+        sql_query: |
+          SELECT TOP 10
+            e.FirstName + ' ' + e.LastName AS EmployeeName,
+            d.Name AS Department,
+            e.Title,
+            pr.Rating,
+            pr.Comments,
+            pr.ReviewDate
+          FROM dbo.PerformanceReviews pr
+          JOIN dbo.Employees e ON pr.EmployeeID = e.EmployeeID
+          JOIN dbo.Departments d ON e.DepartmentID = d.DepartmentID
+          WHERE YEAR(pr.ReviewDate) = YEAR(GETDATE())
+          ORDER BY pr.Rating DESC, pr.ReviewDate DESC
+      - question: Who has pending time-off requests?
+        answer: 3 employees have pending vacation requests for January.
+        sql_query: |
+          SELECT e.FirstName + ' ' + e.LastName AS EmployeeName,
+                 t.Type,
+                 t.StartDate,
+                 t.EndDate,
+                 t.DaysRequested
+          FROM dbo.TimeOffRequests t
+          JOIN dbo.Employees e ON t.EmployeeID = e.EmployeeID
+          WHERE t.Status = 'Pending'
+          ORDER BY t.StartDate
+
+  - name: hotel_analytics
+    datasource:
+      type: synapse
+      server: data-agent-synapse-01.sql.azuresynapse.net
+      database: pool
+      use_aad: true
+    llm:
+      model: gpt-5-mini
+      provider: azure_openai
+      api_version: 2024-12-01-preview
+      temperature: 1.0
+      max_tokens: 2000
+    system_prompt: |
+      You are an expert SQL assistant for a hotel chain analytics data warehouse running on Azure Synapse Analytics.
+
+      ## Your Role
+
+      Generate accurate, efficient T-SQL queries for hotel reservation analytics and reporting. You have access to reservation facts and dimension tables for hotels, guests, rooms, and booking channels.
+
+      ## Database Context
+
+      {schema_context}
+
+      ## Examples
+
+      {few_shot_examples}
+
+      ## Synapse T-SQL Guidelines
+
+      1. **Use only tables and columns defined in the schema above.** Never reference tables or columns not listed.
+      2. **Use T-SQL syntax compatible with Synapse.** This includes:
+         - DATEADD, DATEDIFF, DATEPART, EOMONTH for date operations
+         - GETDATE(), GETUTCDATE() for current time
+         - TOP instead of LIMIT for row limiting
+         - Window functions: ROW_NUMBER, RANK, SUM OVER, etc.
+      3. **Leverage the star schema design:**
+         - Join fact tables to dimension tables using surrogate keys
+         - Filter on dimension attributes, aggregate on fact measures
+      4. **Use appropriate date filtering** on the date dimension for time-based analysis.
+      5. **Consider query performance:**
+         - Filter early in the query
+         - Use appropriate aggregations
+         - Avoid SELECT * on large fact tables
+      6. **Use schema-qualified names** (e.g., dbo.FactReservations) for all table references.
+
+      ## Response Format
+
+      Provide your response as JSON with two fields:
+      - "sql_query": The generated T-SQL query
+      - "explanation": Brief explanation of what the query does
+    response_prompt: |
+      You are a helpful hospitality analytics analyst.
+
+      Given the user's question, the SQL query that was executed, and the results,
+      provide a clear and concise analytical response.
+
+      Be conversational but precise. Include relevant metrics, trends, and insights.
+      Format currency values with $ and commas. Use percentages for comparisons.
+      Highlight notable patterns or anomalies in the data.
+
+      When presenting time-series data, describe trends (increasing, decreasing, stable).
+      If the results are empty, explain what that means in context.
+
+      ## Data Presentation
+
+      When the query returns tabular data (multiple rows/columns), ALWAYS include a formatted markdown table showing the results.
+      - Use proper markdown table syntax with headers
+      - Align numeric columns to the right
+      - Format currency with $ and commas (e.g., $1,234.56)
+      - Format percentages with % symbol (e.g., 42.5%)
+      - Format dates in readable format (e.g., Dec 16, 2025)
+      - Limit tables to 20 rows max; if more rows exist, show first 20 and note "... and X more rows"
+      - After the table, provide a brief summary highlighting key trends or insights
+    table_schemas:
+      - table_name: dbo.DimDate
+        table_description: Date dimension for time-based analysis
+        columns:
+          - column_name: DateKey
+            data_type: INT
+            description: Date key (YYYYMMDD format)
+          - column_name: FullDate
+            data_type: DATE
+            description: Full date value
+          - column_name: Year
+            data_type: INT
+            description: Calendar year
+          - column_name: Quarter
+            data_type: INT
+            description: Calendar quarter (1-4)
+          - column_name: Month
+            data_type: INT
+            description: Calendar month (1-12)
+          - column_name: MonthName
+            data_type: NVARCHAR(20)
+            description: Month name
+          - column_name: WeekOfYear
+            data_type: INT
+            description: Week number of the year
+          - column_name: DayOfWeek
+            data_type: INT
+            description: Day of week (1=Sunday)
+          - column_name: IsWeekend
+            data_type: BIT
+            description: Whether date falls on weekend
+          - column_name: IsHoliday
+            data_type: BIT
+            description: Whether date is a holiday
+          - column_name: HolidayName
+            data_type: NVARCHAR(50)
+            description: Name of holiday (NULL if not a holiday)
+      - table_name: dbo.DimHotel
+        table_description: Hotel properties with location and amenities
+        columns:
+          - column_name: HotelKey
+            data_type: INT
+            description: Surrogate key for hotel
+          - column_name: HotelName
+            data_type: NVARCHAR(100)
+            description: Hotel name
+          - column_name: Brand
+            data_type: NVARCHAR(50)
+            description: Hotel brand
+            allowed_values:
+              Luxury Collection: Premium luxury properties
+              Nature Retreats: Nature and outdoor focused
+              Urban Stays: City center business hotels
+              Coastal Getaways: Beach and waterfront properties
+              Heritage Hotels: Historic boutique properties
+          - column_name: City
+            data_type: NVARCHAR(50)
+            description: City location
+          - column_name: State
+            data_type: NVARCHAR(10)
+            description: State/Province code
+          - column_name: Country
+            data_type: NVARCHAR(50)
+            description: Country
+          - column_name: Region
+            data_type: NVARCHAR(20)
+            description: Geographic region (West, East, Central, South, Mountain)
+          - column_name: StarRating
+            data_type: INT
+            description: Hotel star rating (1-5)
+          - column_name: TotalRooms
+            data_type: INT
+            description: Total number of rooms
+          - column_name: HasPool
+            data_type: BIT
+            description: Has swimming pool
+          - column_name: HasSpa
+            data_type: BIT
+            description: Has spa facilities
+          - column_name: HasRestaurant
+            data_type: BIT
+            description: Has on-site restaurant
+      - table_name: dbo.DimRoomType
+        table_description: Room type configurations
+        columns:
+          - column_name: RoomTypeKey
+            data_type: INT
+            description: Surrogate key for room type
+          - column_name: RoomTypeName
+            data_type: NVARCHAR(50)
+            description: Room type name
+            allowed_values:
+              Standard King: Standard room with king bed
+              Standard Double: Standard room with two double beds
+              Deluxe King: Upgraded room with king bed and balcony
+              Ocean View Suite: Suite with ocean view
+              Executive Suite: Business-focused suite
+              Presidential Suite: Top-tier luxury suite
+              Family Room: Large room for families
+          - column_name: MaxOccupancy
+            data_type: INT
+            description: Maximum number of guests
+          - column_name: SquareFeet
+            data_type: INT
+            description: Room size in square feet
+          - column_name: HasBalcony
+            data_type: BIT
+            description: Has private balcony
+          - column_name: HasOceanView
+            data_type: BIT
+            description: Has ocean view
+      - table_name: dbo.DimGuest
+        table_description: Guest profiles and loyalty information
+        columns:
+          - column_name: GuestKey
+            data_type: INT
+            description: Surrogate key for guest
+          - column_name: GuestName
+            data_type: NVARCHAR(100)
+            description: Guest or company name
+          - column_name: Email
+            data_type: NVARCHAR(100)
+            description: Email address
+          - column_name: LoyaltyTier
+            data_type: NVARCHAR(20)
+            description: Loyalty program tier
+            allowed_values:
+              Member: Basic membership
+              Silver: Silver tier
+              Gold: Gold tier
+              Platinum: Platinum tier (highest individual)
+              Corporate: Corporate accounts
+          - column_name: LoyaltyPoints
+            data_type: INT
+            description: Current loyalty points balance
+          - column_name: Country
+            data_type: NVARCHAR(50)
+            description: Guest country
+          - column_name: State
+            data_type: NVARCHAR(10)
+            description: Guest state/province
+      - table_name: dbo.DimBookingChannel
+        table_description: Booking channel sources
+        columns:
+          - column_name: ChannelKey
+            data_type: INT
+            description: Surrogate key for channel
+          - column_name: ChannelName
+            data_type: NVARCHAR(50)
+            description: Channel name
+            allowed_values:
+              Direct Website: Hotel direct website
+              Mobile App: Hotel mobile app
+              Phone Reservation: Phone booking
+              Expedia: Expedia OTA
+              Booking.com: Booking.com OTA
+              Hotels.com: Hotels.com OTA
+              Corporate Portal: Corporate booking portal
+              Travel Agent: Travel agent booking
+          - column_name: ChannelType
+            data_type: NVARCHAR(20)
+            description: Channel category
+            allowed_values:
+              Direct: Direct bookings (no commission)
+              OTA: Online Travel Agency
+              Corporate: Corporate bookings
+              Agent: Travel agent bookings
+          - column_name: CommissionRate
+            data_type: DECIMAL(4,2)
+            description: Commission rate (0.00-1.00)
+      - table_name: dbo.FactReservations
+        table_description: Reservation fact table with revenue metrics
+        columns:
+          - column_name: ReservationKey
+            data_type: BIGINT
+            description: Unique reservation identifier
+          - column_name: CheckInDateKey
+            data_type: INT
+            description: Check-in date key (FK to DimDate)
+          - column_name: CheckOutDateKey
+            data_type: INT
+            description: Check-out date key (FK to DimDate)
+          - column_name: BookingDateKey
+            data_type: INT
+            description: Booking date key (FK to DimDate)
+          - column_name: HotelKey
+            data_type: INT
+            description: Hotel key (FK to DimHotel)
+          - column_name: RoomTypeKey
+            data_type: INT
+            description: Room type key (FK to DimRoomType)
+          - column_name: GuestKey
+            data_type: INT
+            description: Guest key (FK to DimGuest)
+          - column_name: ChannelKey
+            data_type: INT
+            description: Booking channel key (FK to DimBookingChannel)
+          - column_name: NightsStayed
+            data_type: INT
+            description: Number of nights
+          - column_name: RoomRate
+            data_type: DECIMAL(10,2)
+            description: Nightly room rate
+          - column_name: TotalRoomRevenue
+            data_type: DECIMAL(10,2)
+            description: Total room revenue
+          - column_name: FoodBevRevenue
+            data_type: DECIMAL(10,2)
+            description: Food and beverage revenue
+          - column_name: SpaRevenue
+            data_type: DECIMAL(10,2)
+            description: Spa service revenue
+          - column_name: OtherRevenue
+            data_type: DECIMAL(10,2)
+            description: Other ancillary revenue
+          - column_name: TotalRevenue
+            data_type: DECIMAL(10,2)
+            description: Total reservation revenue
+          - column_name: Adults
+            data_type: INT
+            description: Number of adult guests
+          - column_name: Children
+            data_type: INT
+            description: Number of child guests
+          - column_name: IsCancelled
+            data_type: BIT
+            description: Whether reservation was cancelled
+          - column_name: CancellationReason
+            data_type: NVARCHAR(100)
+            description: Reason for cancellation (NULL if not cancelled)
+    few_shot_examples:
+      - question: What is the total revenue by hotel?
+        answer: Beachfront Paradise leads with $22,650 total revenue, followed by Grand Pacific Resort at $8,915.
+        sql_query: |
+          SELECT
+            h.HotelName,
+            h.City,
+            h.StarRating,
+            COUNT(f.ReservationKey) AS Reservations,
+            SUM(f.TotalRevenue) AS TotalRevenue,
+            SUM(f.TotalRoomRevenue) AS RoomRevenue,
+            SUM(f.FoodBevRevenue) AS FBRevenue
+          FROM dbo.FactReservations f
+          JOIN dbo.DimHotel h ON f.HotelKey = h.HotelKey
+          WHERE f.IsCancelled = 0
+          GROUP BY h.HotelKey, h.HotelName, h.City, h.StarRating
+          ORDER BY TotalRevenue DESC
+      - question: What is the revenue breakdown by booking channel?
+        answer: Direct Website generates 35% of revenue with 0% commission, while OTAs account for 40% with 15-20% commission.
+        sql_query: |
+          SELECT
+            c.ChannelName,
+            c.ChannelType,
+            c.CommissionRate,
+            COUNT(f.ReservationKey) AS Bookings,
+            SUM(f.TotalRevenue) AS TotalRevenue,
+            SUM(f.TotalRevenue * c.CommissionRate) AS CommissionPaid
+          FROM dbo.FactReservations f
+          JOIN dbo.DimBookingChannel c ON f.ChannelKey = c.ChannelKey
+          WHERE f.IsCancelled = 0
+          GROUP BY c.ChannelKey, c.ChannelName, c.ChannelType, c.CommissionRate
+          ORDER BY TotalRevenue DESC
+      - question: Who are the top loyalty guests by lifetime value?
+        answer: John Smith (Platinum) has $11,460 in total spend, followed by Emily Chen (Platinum) at $8,455.
+        sql_query: |
+          SELECT TOP 10
+            g.GuestName,
+            g.LoyaltyTier,
+            g.LoyaltyPoints,
+            COUNT(f.ReservationKey) AS TotalStays,
+            SUM(f.NightsStayed) AS TotalNights,
+            SUM(f.TotalRevenue) AS LifetimeValue
+          FROM dbo.FactReservations f
+          JOIN dbo.DimGuest g ON f.GuestKey = g.GuestKey
+          WHERE f.IsCancelled = 0
+          GROUP BY g.GuestKey, g.GuestName, g.LoyaltyTier, g.LoyaltyPoints
+          ORDER BY LifetimeValue DESC
+      - question: What is the average daily rate by room type?
+        answer: Presidential Suite averages $850/night, while Standard King averages $189/night.
+        sql_query: |
+          SELECT
+            r.RoomTypeName,
+            r.MaxOccupancy,
+            r.SquareFeet,
+            COUNT(f.ReservationKey) AS Bookings,
+            AVG(f.RoomRate) AS AvgDailyRate,
+            SUM(f.TotalRoomRevenue) AS TotalRoomRevenue
+          FROM dbo.FactReservations f
+          JOIN dbo.DimRoomType r ON f.RoomTypeKey = r.RoomTypeKey
+          WHERE f.IsCancelled = 0
+          GROUP BY r.RoomTypeKey, r.RoomTypeName, r.MaxOccupancy, r.SquareFeet
+          ORDER BY AvgDailyRate DESC
+      - question: What is the cancellation rate by channel?
+        answer: Phone reservations have 0% cancellation, while OTAs average 12% cancellation rate.
+        sql_query: |
+          SELECT
+            c.ChannelName,
+            c.ChannelType,
+            COUNT(f.ReservationKey) AS TotalBookings,
+            SUM(CAST(f.IsCancelled AS INT)) AS Cancellations,
+            CAST(SUM(CAST(f.IsCancelled AS INT)) * 100.0 / COUNT(*) AS DECIMAL(5,2)) AS CancellationRate
+          FROM dbo.FactReservations f
+          JOIN dbo.DimBookingChannel c ON f.ChannelKey = c.ChannelKey
+          GROUP BY c.ChannelKey, c.ChannelName, c.ChannelType
+          ORDER BY CancellationRate DESC
+
+max_retries: 3

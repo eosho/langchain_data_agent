@@ -1,0 +1,387 @@
+intent_detection_agent:
+  llm:
+    model: gpt-5-mini
+    provider: azure_openai
+    api_version: 2024-12-01-preview
+    temperature: 1.0
+    max_tokens: 500
+  system_prompt: |
+    You are an intent detection assistant responsible for routing user questions to the appropriate data agent.
+
+    ## Available Data Agents
+
+    {agent_descriptions}
+
+    ## Instructions
+
+    1. Analyze the user's question to understand what data they are asking about.
+    2. Match the question to the most relevant data agent based on the domain and data types.
+    3. If the question is ambiguous, choose the agent most likely to have the relevant data.
+    4. If no agent is a clear match, respond with "unknown".
+
+    ## Response Format
+
+    Respond with ONLY the agent name (e.g., "financial_transactions"). Do not include any explanation.
+
+data_agents:
+  - name: financial_transactions
+    description: Financial transactions, accounts, customers, and fraud alerts
+    datasource:
+      type: bigquery
+      project_id: inspired-micron-96220
+      dataset: financial_data
+      location: US
+    llm:
+      model: gpt-5-mini
+      provider: azure_openai
+      api_version: 2024-12-01-preview
+      temperature: 1.0
+      max_tokens: 2000
+    validation:
+      max_rows: 5000
+      blocked_functions:
+        - session_user
+        - external_query
+    system_prompt: |
+      You are an expert SQL assistant for a financial transactions database running on Google BigQuery.
+
+      ## Your Role
+
+      Generate accurate, efficient BigQuery SQL queries based on natural language questions. You have access to customer, account, transaction, and fraud alert data.
+
+      ## Database Context
+
+      {schema_context}
+
+      ## Examples
+
+      {few_shot_examples}
+
+      ## BigQuery SQL Generation Guidelines
+
+      1. **Use only tables and columns defined in the schema above.** Never reference tables or columns not listed.
+      2. **Use BigQuery SQL syntax.** This includes:
+         - DATE_TRUNC, DATE_ADD, DATE_SUB for date operations
+         - CURRENT_DATE(), CURRENT_TIMESTAMP() for current time
+         - EXTRACT(YEAR FROM date), EXTRACT(MONTH FROM date) for date parts
+         - STRING, INT64, FLOAT64, NUMERIC, BOOL data types
+         - TIMESTAMP for datetime values
+      3. **Always qualify column names** with table aliases to avoid ambiguity.
+      4. **Use appropriate JOINs** when combining data from multiple tables.
+      5. **Include WHERE clauses** to filter data when the question implies filtering.
+      6. **Use GROUP BY** for aggregations and ORDER BY for sorting results.
+      7. **Use LIMIT** to restrict results (e.g., LIMIT 100) unless the user specifies otherwise.
+      8. **Handle NULL values** appropriately with IFNULL, COALESCE, or IS NOT NULL checks.
+      9. **Use fully qualified table names** in format `project.dataset.table` or just `dataset.table`.
+
+      ## Response Format
+
+      Provide your response as JSON with two fields:
+      - "sql_query": The generated BigQuery SQL query
+      - "explanation": Brief explanation of what the query does
+    response_prompt: |
+      You are a helpful financial analyst for banking and transaction data.
+
+      Given the user's question, the SQL query that was executed, and the results,
+      provide a clear and concise natural language response.
+
+      Be conversational but precise. Include relevant numbers, percentages, and insights.
+      Format currency values with $ and commas. Format large numbers for readability.
+      When discussing fraud or risk, be clear about severity levels and recommended actions.
+      If the results are empty, explain what that means in context.
+
+      ## Data Presentation
+
+      When the query returns tabular data (multiple rows/columns), ALWAYS include a formatted markdown table showing the results.
+      - Use proper markdown table syntax with headers
+      - Align numeric columns to the right
+      - Format currency with $ and commas (e.g., $1,234.56)
+      - Format dates in readable format (e.g., Dec 16, 2025)
+      - Limit tables to 20 rows max; if more rows exist, show first 20 and note "... and X more rows"
+      - After the table, provide a brief summary or insight about the data
+    table_schemas:
+      - table_name: customers
+        table_description: Customer profiles with segmentation and risk scoring
+        columns:
+          - column_name: customer_id
+            data_type: STRING
+            description: Unique customer identifier (e.g., CUST-001)
+          - column_name: first_name
+            data_type: STRING
+            description: Customer first name
+          - column_name: last_name
+            data_type: STRING
+            description: Customer last name
+          - column_name: email
+            data_type: STRING
+            description: Customer email address
+          - column_name: phone
+            data_type: STRING
+            description: Customer phone number
+          - column_name: date_of_birth
+            data_type: DATE
+            description: Customer date of birth
+          - column_name: registration_date
+            data_type: DATE
+            description: Date customer registered
+          - column_name: customer_segment
+            data_type: STRING
+            description: Customer tier/segment
+            allowed_values:
+              Standard: Regular customers
+              Premium: High-value customers with enhanced benefits
+              VIP: Top-tier customers with exclusive services
+          - column_name: risk_score
+            data_type: FLOAT64
+            description: Customer risk score (0.0 to 1.0, higher = riskier)
+          - column_name: is_active
+            data_type: BOOL
+            description: Whether the customer account is active
+      - table_name: accounts
+        table_description: Customer bank accounts including checking, savings, credit, and investment
+        columns:
+          - column_name: account_id
+            data_type: STRING
+            description: Unique account identifier (e.g., ACC-001-CHK)
+          - column_name: customer_id
+            data_type: STRING
+            description: Customer who owns the account
+          - column_name: account_type
+            data_type: STRING
+            description: Type of account
+            allowed_values:
+              Checking: Standard checking account
+              Savings: Savings account with interest
+              Credit: Credit card account
+              Investment: Investment/brokerage account
+          - column_name: account_status
+            data_type: STRING
+            description: Current status of the account
+            allowed_values:
+              Active: Account is open and operational
+              Frozen: Account is temporarily frozen
+              Closed: Account has been closed
+          - column_name: opened_date
+            data_type: DATE
+            description: Date the account was opened
+          - column_name: currency
+            data_type: STRING
+            description: Account currency (e.g., USD)
+          - column_name: current_balance
+            data_type: NUMERIC
+            description: Current account balance (negative for credit owed)
+          - column_name: credit_limit
+            data_type: NUMERIC
+            description: Credit limit for credit accounts (NULL for others)
+          - column_name: interest_rate
+            data_type: FLOAT64
+            description: Annual interest rate percentage
+      - table_name: transactions
+        table_description: Financial transactions including deposits, withdrawals, transfers, and payments
+        columns:
+          - column_name: transaction_id
+            data_type: STRING
+            description: Unique transaction identifier
+          - column_name: account_id
+            data_type: STRING
+            description: Account involved in the transaction
+          - column_name: transaction_timestamp
+            data_type: TIMESTAMP
+            description: Exact time of the transaction
+          - column_name: transaction_date
+            data_type: DATE
+            description: Date of the transaction
+          - column_name: transaction_type
+            data_type: STRING
+            description: Type of transaction
+            allowed_values:
+              Deposit: Money added to account
+              Withdrawal: Cash withdrawn from account
+              Transfer: Money transferred between accounts
+              Payment: Payment to merchant or bill
+              Refund: Refund received
+          - column_name: amount
+            data_type: NUMERIC
+            description: Transaction amount (negative for outgoing)
+          - column_name: currency
+            data_type: STRING
+            description: Transaction currency
+          - column_name: merchant_name
+            data_type: STRING
+            description: Merchant or payee name (NULL for deposits/transfers)
+          - column_name: merchant_category
+            data_type: STRING
+            description: Category of merchant
+            allowed_values:
+              Grocery: Grocery stores and supermarkets
+              Gas: Gas stations
+              Entertainment: Entertainment and streaming
+              Travel: Airlines, hotels, travel services
+              Electronics: Electronics and tech stores
+              Shopping: General retail shopping
+              Food: Restaurants and food delivery
+              Transportation: Ride services and public transit
+              Housing: Rent and housing payments
+              Other: Other/uncategorized
+          - column_name: channel
+            data_type: STRING
+            description: Transaction channel
+            allowed_values:
+              Branch: In-person at bank branch
+              ATM: ATM transaction
+              Online: Online/web transaction
+              Mobile: Mobile app transaction
+              POS: Point of sale terminal
+          - column_name: status
+            data_type: STRING
+            description: Transaction status
+            allowed_values:
+              Completed: Transaction completed successfully
+              Pending: Transaction is pending
+              Reversed: Transaction was reversed/cancelled
+              Failed: Transaction failed
+          - column_name: reference_id
+            data_type: STRING
+            description: External reference identifier
+          - column_name: description
+            data_type: STRING
+            description: Transaction description or notes
+      - table_name: fraud_alerts
+        table_description: Fraud detection alerts and investigation status
+        columns:
+          - column_name: alert_id
+            data_type: STRING
+            description: Unique alert identifier
+          - column_name: transaction_id
+            data_type: STRING
+            description: Transaction that triggered the alert
+          - column_name: alert_timestamp
+            data_type: TIMESTAMP
+            description: When the alert was generated
+          - column_name: alert_type
+            data_type: STRING
+            description: Type of fraud alert
+            allowed_values:
+              Suspicious Amount: Unusually large transaction amount
+              Velocity: Too many transactions in short time
+              Unusual Location: Transaction from unusual location
+              Pattern: Unusual spending pattern detected
+          - column_name: severity
+            data_type: STRING
+            description: Alert severity level
+            allowed_values:
+              Low: Minor concern, low risk
+              Medium: Moderate concern, investigation recommended
+              High: Serious concern, immediate attention needed
+              Critical: Urgent, possible active fraud
+          - column_name: status
+            data_type: STRING
+            description: Investigation status
+            allowed_values:
+              Investigating: Under active investigation
+              Confirmed Fraud: Confirmed as fraudulent
+              False Positive: Determined to be legitimate
+              Resolved: Issue has been resolved
+          - column_name: risk_score
+            data_type: FLOAT64
+            description: Calculated risk score (0.0 to 1.0)
+          - column_name: notes
+            data_type: STRING
+            description: Investigation notes
+      - table_name: monthly_summaries
+        table_description: Monthly account summaries with aggregated transaction data
+        columns:
+          - column_name: summary_id
+            data_type: STRING
+            description: Unique summary identifier
+          - column_name: account_id
+            data_type: STRING
+            description: Account the summary is for
+          - column_name: year_month
+            data_type: STRING
+            description: Summary period in YYYY-MM format
+          - column_name: opening_balance
+            data_type: NUMERIC
+            description: Balance at start of month
+          - column_name: closing_balance
+            data_type: NUMERIC
+            description: Balance at end of month
+          - column_name: total_deposits
+            data_type: NUMERIC
+            description: Total deposits during month
+          - column_name: total_withdrawals
+            data_type: NUMERIC
+            description: Total withdrawals during month
+          - column_name: transaction_count
+            data_type: INT64
+            description: Number of transactions during month
+          - column_name: avg_transaction_amount
+            data_type: NUMERIC
+            description: Average transaction amount
+          - column_name: largest_transaction
+            data_type: NUMERIC
+            description: Largest single transaction amount
+    few_shot_examples:
+      - question: What are the total deposits by customer segment this month?
+        answer: This query shows total deposits grouped by customer segment (VIP, Premium, Standard) for the current month.
+        sql_query: |
+          SELECT
+            c.customer_segment,
+            COUNT(DISTINCT c.customer_id) AS customer_count,
+            SUM(t.amount) AS total_deposits,
+            AVG(t.amount) AS avg_deposit
+          FROM financial_data.customers c
+          JOIN financial_data.accounts a ON c.customer_id = a.customer_id
+          JOIN financial_data.transactions t ON a.account_id = t.account_id
+          WHERE t.transaction_type = 'Deposit'
+            AND t.transaction_date >= DATE_TRUNC(CURRENT_DATE(), MONTH)
+          GROUP BY c.customer_segment
+          ORDER BY total_deposits DESC
+      - question: Show me all high-severity fraud alerts from the past week
+        answer: This query returns high and critical severity fraud alerts from the last 7 days with transaction and customer details.
+        sql_query: |
+          SELECT
+            fa.alert_id,
+            fa.alert_type,
+            fa.severity,
+            fa.status,
+            fa.risk_score,
+            t.amount,
+            t.merchant_name,
+            c.first_name || ' ' || c.last_name AS customer_name
+          FROM financial_data.fraud_alerts fa
+          JOIN financial_data.transactions t ON fa.transaction_id = t.transaction_id
+          JOIN financial_data.accounts a ON t.account_id = a.account_id
+          JOIN financial_data.customers c ON a.customer_id = c.customer_id
+          WHERE fa.severity IN ('High', 'Critical')
+            AND fa.alert_timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)
+          ORDER BY fa.alert_timestamp DESC
+      - question: What's the average account balance by account type?
+        answer: This query calculates average, minimum, and maximum balances for each account type (Checking, Savings, Credit, Investment).
+        sql_query: |
+          SELECT
+            account_type,
+            COUNT(*) AS account_count,
+            AVG(current_balance) AS avg_balance,
+            MIN(current_balance) AS min_balance,
+            MAX(current_balance) AS max_balance
+          FROM financial_data.accounts
+          WHERE account_status = 'Active'
+          GROUP BY account_type
+          ORDER BY avg_balance DESC
+      - question: Who are the top 5 customers by total transaction volume?
+        answer: This query identifies the top 5 customers based on their total transaction volume (sum of absolute amounts).
+        sql_query: |
+          SELECT
+            c.customer_id,
+            c.first_name || ' ' || c.last_name AS customer_name,
+            c.customer_segment,
+            COUNT(t.transaction_id) AS transaction_count,
+            SUM(ABS(t.amount)) AS total_volume
+          FROM financial_data.customers c
+          JOIN financial_data.accounts a ON c.customer_id = a.customer_id
+          JOIN financial_data.transactions t ON a.account_id = t.account_id
+          WHERE t.status = 'Completed'
+          GROUP BY c.customer_id, c.first_name, c.last_name, c.customer_segment
+          ORDER BY total_volume DESC
+          LIMIT 5

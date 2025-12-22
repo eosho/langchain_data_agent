@@ -1,0 +1,528 @@
+intent_detection_agent:
+  llm:
+    model: gpt-5-mini
+    provider: azure_openai
+    api_version: 2024-12-01-preview
+    temperature: 1.0
+    max_tokens: 500
+  system_prompt: |
+    You are an intent detection assistant responsible for routing user questions to the appropriate data agent.
+
+    ## Available Data Agents
+
+    {agent_descriptions}
+
+    ## Instructions
+
+    1. Analyze the user's question to understand what data they are asking about.
+    2. Match the question to the most relevant data agent based on the domain and data types.
+    3. If the question is ambiguous, choose the agent most likely to have the relevant data.
+    4. If no agent is a clear match, respond with "unknown".
+
+    ## Response Format
+
+    Respond with ONLY the agent name (e.g., "contoso_sales", "contoso_products" or "contoso_inventory"). Do not include any explanation.
+
+data_agents:
+  - name: contoso_sales
+    description: Sales transactions, customers, and revenue analytics
+    datasource:
+      type: databricks
+      hostname: adb-2528130919068120.0.azuredatabricks.net
+      path: /sql/1.0/warehouses/348b2b8716253ec2
+      catalog: hive_metastore
+      db_schema: sales
+    llm:
+      model: gpt-5-mini
+      provider: azure_openai
+      api_version: 2024-12-01-preview
+      temperature: 1.0
+      max_tokens: 2000
+    system_prompt: |
+      You are an expert SQL assistant for the Contoso sales database running on Databricks.
+
+      ## Your Role
+
+      Generate accurate, efficient SQL queries based on natural language questions. You have access ONLY to sales and customer data - NOT product data.
+
+      ## IMPORTANT: Available Tables
+
+      This database contains ONLY two tables:
+      - **orders**: Order transactions with order_id, customer_id, order_date, total_amount, status
+      - **customers**: Customer info with customer_id, name, email, region
+
+      There are NO tables for: products, order_items, inventory, categories, or any other entities.
+      If a question asks about products or items, explain that this data is not available in the sales database.
+
+      ## Database Context
+
+      {schema_context}
+
+      ## Examples
+
+      {few_shot_examples}
+
+      ## SQL Generation Guidelines
+
+      1. **Use ONLY the two tables defined above (orders, customers).** Never reference tables or columns not listed. If asked about unavailable data, respond with an explanation instead of generating invalid SQL.
+      2. **Use Databricks SQL syntax.** This includes:
+         - DATE_TRUNC, DATE_ADD, DATE_SUB for date operations
+         - CURRENT_DATE, CURRENT_TIMESTAMP for current time
+         - STRING, INT, DECIMAL data types
+      3. **Always qualify ambiguous column names** with table aliases.
+      4. **Use appropriate JOINs** when combining data from multiple tables.
+      5. **Include WHERE clauses** to filter data when the question implies filtering.
+      6. **Use GROUP BY** for aggregations and ORDER BY for sorting results.
+      7. **Limit results** to a reasonable number (e.g., LIMIT 100) unless the user specifies otherwise.
+      8. **Handle NULL values** appropriately with COALESCE or IS NOT NULL checks.
+
+      ## Response Format
+
+      Provide your response as JSON with two fields:
+      - "sql_query": The generated SQL query
+      - "explanation": Brief explanation of what the query does
+    response_prompt: |
+      You are a helpful data analyst for Contoso sales data.
+
+      Given the user's question, the SQL query that was executed, and the results,
+      provide a clear and concise natural language response.
+
+      Be conversational but precise. Include relevant numbers, percentages, and insights.
+      Format large numbers with commas for readability.
+      If the results are empty, explain what that means in context.
+
+      ## Data Presentation
+
+      When the query returns tabular data (multiple rows/columns), ALWAYS include a formatted markdown table showing the results.
+      - Use proper markdown table syntax with headers
+      - Align numeric columns to the right
+      - Format currency with $ and commas (e.g., $1,234.56)
+      - Limit tables to 20 rows max; if more rows exist, show first 20 and note "... and X more rows"
+      - After the table, provide a brief summary or insight about the data
+
+      For single-value results (counts, totals, averages), include the number prominently in your response.
+    table_schemas:
+      - table_name: orders
+        table_description: Contains all customer orders with order details and status
+        columns:
+          - column_name: order_id
+            data_type: STRING
+            description: Unique order identifier
+          - column_name: customer_id
+            data_type: STRING
+            description: Customer identifier
+          - column_name: order_date
+            data_type: DATE
+            description: Date the order was placed
+          - column_name: total_amount
+            data_type: DECIMAL(10,2)
+            description: Total order amount in USD
+          - column_name: status
+            data_type: STRING
+            description: Order status
+            allowed_values:
+              pending: Order is awaiting processing
+              processing: Order is being processed
+              shipped: Order has been shipped
+              delivered: Order has been delivered
+              cancelled: Order was cancelled
+      - table_name: customers
+        table_description: Customer information and demographics
+        columns:
+          - column_name: customer_id
+            data_type: STRING
+            description: Unique customer identifier
+          - column_name: name
+            data_type: STRING
+            description: Customer full name
+          - column_name: email
+            data_type: STRING
+            description: Customer email address
+          - column_name: region
+            data_type: STRING
+            description: Geographic region
+            allowed_values:
+              West: Western region
+              East: Eastern region
+              Central: Central region
+    few_shot_examples:
+      - question: How many orders were placed last month?
+        answer: There were 42 orders placed last month.
+        sql_query: |
+          SELECT COUNT(*) as order_count
+          FROM orders
+          WHERE order_date >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL 1 MONTH)
+            AND order_date < DATE_TRUNC('month', CURRENT_DATE)
+      - question: What is the total revenue by region?
+        answer: "The total revenue by region is: West: $15,234.56, East: $12,456.78, Central: $11,234.56."
+        sql_query: |
+          SELECT c.region, SUM(o.total_amount) as total_revenue
+          FROM orders o
+          JOIN customers c ON o.customer_id = c.customer_id
+          WHERE o.status = 'delivered'
+          GROUP BY c.region
+          ORDER BY total_revenue DESC
+      - question: Who are the top 5 customers by total spending?
+        answer: "The top 5 customers are: 1. Alice Johnson ($1,234.56), 2. Bob Smith ($987.65), etc."
+        sql_query: |
+          SELECT c.name, c.email, c.region, SUM(o.total_amount) as total_spent
+          FROM customers c
+          JOIN orders o ON c.customer_id = o.customer_id
+          WHERE o.status = 'delivered'
+          GROUP BY c.customer_id, c.name, c.email, c.region
+          ORDER BY total_spent DESC
+          LIMIT 5
+      - question: Show me all pending orders
+        answer: "There are 12 pending orders awaiting processing."
+        sql_query: |
+          SELECT o.order_id, o.order_date, o.total_amount, c.name as customer_name
+          FROM orders o
+          JOIN customers c ON o.customer_id = c.customer_id
+          WHERE o.status = 'pending'
+          ORDER BY o.order_date ASC
+      - question: What is the order status breakdown?
+        answer: "Order status breakdown: 150 delivered, 25 shipped, 10 processing, 8 pending, 5 cancelled."
+        sql_query: |
+          SELECT status, COUNT(*) as count
+          FROM orders
+          GROUP BY status
+          ORDER BY count DESC
+      - question: Show me the average order value by region
+        answer: "Average order value: West $245.67, East $198.45, Central $212.34."
+        sql_query: |
+          SELECT c.region, AVG(o.total_amount) as avg_order_value
+          FROM orders o
+          JOIN customers c ON o.customer_id = c.customer_id
+          WHERE o.status = 'delivered'
+          GROUP BY c.region
+          ORDER BY avg_order_value DESC
+
+  - name: contoso_products
+    description: Product catalog, inventory, and pricing data
+    datasource:
+      type: cosmos
+      endpoint: https://travel-ai-cosmosdb.documents.azure.com:443/
+      database: product_catalog
+      container: products
+      partition_key_path: /id
+      use_aad: true
+    llm:
+      model: gpt-5-mini
+      provider: azure_openai
+      api_version: 2024-12-01-preview
+      temperature: 1.0
+      max_tokens: 2000
+    system_prompt: |
+      You are an expert query assistant for the Contoso product catalog stored in Azure Cosmos DB.
+
+      ## Your Role
+
+      Generate accurate Cosmos DB SQL queries based on natural language questions. You have access to product catalog and inventory data.
+
+      ## Database Context
+
+      {schema_context}
+
+      ## Examples
+
+      {few_shot_examples}
+
+      ## Cosmos DB Query Guidelines
+
+      1. **Use Cosmos DB SQL syntax.** This is similar to standard SQL but with some differences:
+         - Use `SELECT * FROM c` where `c` is the container alias
+         - Use dot notation for nested properties: `c.category.name`
+         - Use ARRAY_CONTAINS for array searches
+         - Use IS_DEFINED to check for optional properties
+      2. **Partition key awareness:** Queries perform best when filtering on the partition key (`category`).
+      3. **Use VALUE keyword** when returning a single scalar value: `SELECT VALUE COUNT(1) FROM c`
+      4. **Use JOIN for arrays:** `SELECT p FROM c JOIN p IN c.variants`
+      5. **String comparisons are case-sensitive** in Cosmos DB.
+      6. **Use built-in functions:**
+         - CONTAINS, STARTSWITH, ENDSWITH for string matching
+         - ARRAY_LENGTH for array counts
+         - GetCurrentDateTime() for current time
+      7. **Avoid cross-partition queries** when possible by including partition key in WHERE clause.
+      8. **GROUP BY limitations:** Cosmos DB has limited GROUP BY support. For counting by category, query each category separately or use `SELECT VALUE COUNT(1) FROM c WHERE c.category = 'value'`.
+
+      ## Response Format
+
+      Provide your response as JSON with two fields:
+      - "sql_query": The generated Cosmos DB SQL query
+      - "explanation": Brief explanation of what the query does
+    response_prompt: |
+      You are a helpful product catalog assistant for Contoso.
+
+      Given the user's question, the Cosmos DB query that was executed, and the results,
+      provide a clear and concise natural language response.
+
+      Be conversational but precise. When listing products, include key details like name, category, and price.
+      If inventory is low, highlight that. Format prices with currency symbols.
+
+      ## Data Presentation
+
+      When the query returns tabular data (multiple rows/columns), ALWAYS include a formatted markdown table showing the results.
+      - Use proper markdown table syntax with headers
+      - Align numeric columns to the right
+      - Format prices with $ (e.g., $29.99)
+      - Limit tables to 20 rows max; if more rows exist, show first 20 and note "... and X more rows"
+      - After the table, provide a brief summary or insight about the data
+    table_schemas:
+      - table_name: products
+        table_description: Product catalog with inventory and pricing information
+        columns:
+          - column_name: id
+            data_type: STRING
+            description: Unique product identifier
+          - column_name: name
+            data_type: STRING
+            description: Product name
+          - column_name: category
+            data_type: STRING
+            description: Product category (partition key)
+            allowed_values:
+              electronics: Electronic devices and accessories
+              clothing: Apparel and fashion items
+              home: Home and garden products
+              sports: Sports and outdoor equipment
+          - column_name: price
+            data_type: NUMBER
+            description: Current price in USD
+          - column_name: inventory_count
+            data_type: NUMBER
+            description: Current inventory quantity
+          - column_name: tags
+            data_type: ARRAY
+            description: Array of product tags for search
+          - column_name: variants
+            data_type: ARRAY
+            description: Array of product variants with size, color, sku
+          - column_name: is_active
+            data_type: BOOLEAN
+            description: Whether product is currently available
+          - column_name: created_at
+            data_type: STRING
+            description: ISO 8601 timestamp of product creation
+    few_shot_examples:
+      - question: How many active products are there?
+        answer: There are 44 active products in the catalog.
+        sql_query: |
+          SELECT VALUE COUNT(1)
+          FROM c
+          WHERE c.is_active = true
+      - question: How many electronics products are there?
+        answer: There are 11 electronics products.
+        sql_query: |
+          SELECT VALUE COUNT(1)
+          FROM c
+          WHERE c.category = 'electronics' AND c.is_active = true
+      - question: Find all products with low inventory
+        answer: Found 4 products with inventory below 10 units.
+        sql_query: |
+          SELECT c.id, c.name, c.category, c.inventory_count
+          FROM c
+          WHERE c.inventory_count < 10 AND c.is_active = true
+          ORDER BY c.inventory_count ASC
+      - question: What products have the 'sale' tag?
+        answer: Found 10 products currently on sale.
+        sql_query: |
+          SELECT c.id, c.name, c.price, c.category
+          FROM c
+          WHERE ARRAY_CONTAINS(c.tags, 'sale') AND c.is_active = true
+      - question: List all electronics products
+        answer: Here are the electronics products.
+        sql_query: |
+          SELECT c.id, c.name, c.price, c.inventory_count
+          FROM c
+          WHERE c.category = 'electronics' AND c.is_active = true
+      - question: What is the most expensive product?
+        answer: The most expensive product is the Tablet Pro 12.9" at $899.99.
+        sql_query: |
+          SELECT TOP 1 c.id, c.name, c.category, c.price
+          FROM c
+          WHERE c.is_active = true
+          ORDER BY c.price DESC
+      - question: Show me products under $50
+        answer: Found 16 products priced under $50.
+        sql_query: |
+          SELECT c.id, c.name, c.category, c.price
+          FROM c
+          WHERE c.price < 50 AND c.is_active = true
+          ORDER BY c.price ASC
+
+  - name: contoso_inventory
+    description: Warehouse locations, inventory levels, and shipments
+    datasource:
+      type: postgres
+      host: localhost
+      port: 5432
+      database: contoso_inventory
+      username: postgres
+      password: ""
+      schema: public
+    llm:
+      model: gpt-5-mini
+      provider: azure_openai
+      api_version: 2024-12-01-preview
+      temperature: 1.0
+      max_tokens: 2000
+    system_prompt: |
+      You are an expert SQL assistant for the Contoso inventory database running on PostgreSQL.
+
+      ## Your Role
+
+      Generate accurate, efficient SQL queries based on natural language questions. You have access to warehouse inventory and shipment data.
+
+      ## Database Context
+
+      {schema_context}
+
+      ## Examples
+
+      {few_shot_examples}
+
+      ## SQL Generation Guidelines
+
+      1. **Use only tables and columns defined in the schema above.** Never reference tables or columns not listed.
+      2. **Use PostgreSQL syntax.** This includes:
+         - DATE_TRUNC, AGE, EXTRACT for date operations
+         - NOW(), CURRENT_DATE, CURRENT_TIMESTAMP for current time
+         - TEXT, INTEGER, NUMERIC, BOOLEAN data types
+         - ILIKE for case-insensitive matching
+      3. **Always qualify ambiguous column names** with table aliases.
+      4. **Use appropriate JOINs** when combining data from multiple tables.
+      5. **Include WHERE clauses** to filter data when the question implies filtering.
+      6. **Use GROUP BY** for aggregations and ORDER BY for sorting results.
+      7. **Limit results** to a reasonable number (e.g., LIMIT 100) unless the user specifies otherwise.
+      8. **Handle NULL values** appropriately with COALESCE or IS NOT NULL checks.
+
+      ## Response Format
+
+      Provide your response as JSON with two fields:
+      - "sql_query": The generated SQL query
+      - "explanation": Brief explanation of what the query does
+    response_prompt: |
+      You are a helpful inventory analyst for Contoso.
+
+      You are given:
+      - the user's question
+      - the SQL query that was executed
+      - the query results (this is the source of truth)
+
+      Your job is to turn the results into a clear, useful answer that directly reflects the data returned.
+      Do not speculate or invent values that are not present in the results.
+
+      Always ground your response in the data:
+      - Explicitly reference quantities, counts, dates, SKUs, locations, or inventory levels when available.
+      - If the result set is empty, say so plainly and explain what that implies.
+      - If numbers look unusual or concerning, briefly call that out rather than ignoring it.
+
+      Be conversational but precise. Imagine you're explaining the findings to an operations manager who just wants to know what's going on.
+
+      Pay special attention to:
+      - Low stock or zero inventory
+      - Backorders, delayed fulfillment, or shortages
+      - Items that are close to reorder thresholds
+
+      When multiple rows are returned, present the data as a markdown table.
+      - Include clear column headers
+      - Preserve the order and values exactly as they appear in the results
+
+      If there is only a single row or a single value, summarize it in plain text, but still mention the key numbers explicitly.
+
+      End with a short, practical takeaway if appropriate (for example, whether action may be needed), but keep it grounded in the data shown.
+    table_schemas:
+      - table_name: warehouses
+        table_description: Warehouse locations and capacity information
+        columns:
+          - column_name: warehouse_id
+            data_type: INTEGER
+            description: Unique warehouse identifier
+          - column_name: name
+            data_type: TEXT
+            description: Warehouse name
+          - column_name: location
+            data_type: TEXT
+            description: City and state/country
+          - column_name: capacity
+            data_type: INTEGER
+            description: Maximum storage capacity in units
+          - column_name: is_active
+            data_type: BOOLEAN
+            description: Whether warehouse is operational
+      - table_name: inventory
+        table_description: Current inventory levels by product and warehouse
+        columns:
+          - column_name: inventory_id
+            data_type: INTEGER
+            description: Unique inventory record identifier
+          - column_name: product_id
+            data_type: TEXT
+            description: Product identifier (links to product catalog)
+          - column_name: warehouse_id
+            data_type: INTEGER
+            description: Warehouse identifier
+          - column_name: quantity
+            data_type: INTEGER
+            description: Current quantity in stock
+          - column_name: reorder_level
+            data_type: INTEGER
+            description: Minimum quantity before reorder
+          - column_name: last_updated
+            data_type: TIMESTAMP
+            description: Last inventory update timestamp
+      - table_name: shipments
+        table_description: Inbound and outbound shipments
+        columns:
+          - column_name: shipment_id
+            data_type: INTEGER
+            description: Unique shipment identifier
+          - column_name: warehouse_id
+            data_type: INTEGER
+            description: Warehouse identifier
+          - column_name: shipment_type
+            data_type: TEXT
+            description: Type of shipment
+            allowed_values:
+              inbound: Receiving inventory from suppliers
+              outbound: Shipping to customers or stores
+          - column_name: status
+            data_type: TEXT
+            description: Shipment status
+            allowed_values:
+              pending: Scheduled but not started
+              in_transit: Currently being transported
+              delivered: Successfully delivered
+              cancelled: Shipment was cancelled
+          - column_name: scheduled_date
+            data_type: DATE
+            description: Scheduled shipment date
+          - column_name: actual_date
+            data_type: DATE
+            description: Actual delivery date (null if not delivered)
+    few_shot_examples:
+      - question: Which products need to be reordered?
+        answer: Found 22 products below reorder level across all warehouses.
+        sql_query: |
+          SELECT i.product_id, w.name as warehouse, i.quantity, i.reorder_level
+          FROM inventory i
+          JOIN warehouses w ON i.warehouse_id = w.warehouse_id
+          WHERE i.quantity < i.reorder_level AND w.is_active = true
+          ORDER BY (i.reorder_level - i.quantity) DESC
+      - question: What is the total inventory by warehouse?
+        answer: "Seattle: 50,000 units, Dallas: 35,000 units, Chicago: 28,000 units."
+        sql_query: |
+          SELECT w.name, SUM(i.quantity) as total_units
+          FROM warehouses w
+          JOIN inventory i ON w.warehouse_id = i.warehouse_id
+          WHERE w.is_active = true
+          GROUP BY w.warehouse_id, w.name
+          ORDER BY total_units DESC
+      - question: How many shipments are in transit?
+        answer: There are 16 shipments currently in transit.
+        sql_query: |
+          SELECT COUNT(*) as in_transit_count
+          FROM shipments
+          WHERE status = 'in_transit'
+
+max_retries: 3
