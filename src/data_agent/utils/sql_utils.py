@@ -3,6 +3,8 @@
 import re
 from datetime import date
 
+import sqlglot
+
 
 def _get_current_date() -> str:
     """Return current date in ISO format.
@@ -76,3 +78,25 @@ def clean_sql_query(query: str) -> str:
     cleaned = cleaned.strip().rstrip(";").strip()
 
     return re.sub(r"\s+", " ", cleaned)
+
+
+def pretty_sql(query: str, dialect: str | None = None, pretty: bool = True) -> str:
+    """Format SQL query with proper indentation.
+
+    Args:
+        query: The SQL query to format.
+        dialect: SQL dialect for parsing (e.g., 'postgres', 'bigquery').
+        pretty: Whether to format with indentation (default True).
+
+    Returns:
+        Formatted SQL query, or original if parsing fails.
+    """
+    try:
+        return sqlglot.transpile(
+            query,
+            read=dialect,
+            write=dialect,
+            pretty=pretty,
+        )[0]
+    except Exception:
+        return query.strip()

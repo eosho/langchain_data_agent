@@ -12,7 +12,9 @@ from dotenv import load_dotenv
 from data_agent.agent import DataAgentFlow
 from data_agent.config import CONFIG_DIR
 from data_agent.config_loader import ConfigLoader
+from data_agent.core.logging import setup_logging
 
+setup_logging()
 logger = logging.getLogger(__name__)
 
 load_dotenv()

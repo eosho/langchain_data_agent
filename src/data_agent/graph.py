@@ -2,12 +2,6 @@
 
 This module provides the DataAgentGraph class for creating LangGraph pipelines
 for natural language to SQL query conversion.
-
-Example:
-    >>> from langchain_community.utilities.sql_database import SQLDatabase
-    >>> db = SQLDatabase.from_uri("postgresql://...")
-    >>> graph = DataAgentGraph(llm, db, config).compile()
-    >>> result = await graph.ainvoke({"question": "...", "datasource_name": "sales"})
 """
 
 import logging
@@ -43,20 +37,6 @@ class DataAgentGraph:
         datasource: SQLDatabase or CosmosAdapter instance.
         config: Data agent configuration with schema and prompts.
         max_retries: Maximum SQL generation retry attempts.
-
-    Example:
-        ```python
-        from langchain_community.utilities.sql_database import SQLDatabase
-
-        db = SQLDatabase.from_uri("sqlite:///:memory:")
-        config = DataAgentConfig(name="test")
-        graph = DataAgentGraph(llm, db, config).compile()
-
-        result = await graph.ainvoke({
-            "question": "How many users are there?",
-            "datasource_name": "test"
-        })
-        ```
     """
 
     def __init__(

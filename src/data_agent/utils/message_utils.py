@@ -20,10 +20,6 @@ def get_recent_history(
 
     Returns:
         List of recent messages suitable for LLM prompt inclusion.
-
-    Example:
-        >>> history = get_recent_history(state.get("messages", []))
-        >>> messages = [SystemMessage(...), *history, HumanMessage(...)]
     """
     if not messages:
         return []

@@ -319,23 +319,3 @@ class SQLValidator:
             warnings=[f"Basic validation used for {self.dialect} dialect"],
             dialect=self.dialect,
         )
-
-    def format_sql(self, query: str, pretty: bool = True) -> str:
-        """Format SQL query with proper indentation.
-
-        Args:
-            query: The SQL query to format.
-            pretty: Whether to format with indentation (default True).
-
-        Returns:
-            Formatted SQL query, or original if parsing fails.
-        """
-        try:
-            return sqlglot.transpile(
-                query,
-                read=self.dialect,
-                write=self.dialect,
-                pretty=pretty,
-            )[0]
-        except Exception:
-            return query.strip()

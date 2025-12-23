@@ -4,7 +4,7 @@ from rich.panel import Panel
 from rich.syntax import Syntax
 
 from data_agent.cli.console import console, err_console
-from data_agent.validators import SQLValidator
+from data_agent.utils.sql_utils import pretty_sql
 
 
 def print_sql(
@@ -17,8 +17,7 @@ def print_sql(
         title: The panel title.
         dialect: SQL dialect for formatting.
     """
-    validator = SQLValidator(dialect=dialect or "postgres")
-    formatted_sql = validator.format_sql(sql)
+    formatted_sql = pretty_sql(sql, dialect=dialect)
     syntax = Syntax(formatted_sql, "sql", theme="monokai", line_numbers=False)
     panel = Panel(syntax, title=f"[sql]{title}[/sql]", border_style="green")
     console.print(panel)

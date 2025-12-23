@@ -314,7 +314,7 @@ class DataAgentNodes:
                     "result": result,
                     "messages": [
                         AIMessage(
-                            content=f"Query executed successfully. Returned {result.row_count} rows.\n\nResults:\n{result}",
+                            content=f"Query executed successfully.\n\nResults:\n{result}",
                             name="query_executor",
                         ),
                     ],
@@ -332,7 +332,7 @@ class DataAgentNodes:
                 "result": result,
                 "messages": [
                     AIMessage(
-                        content=f"Query executed successfully. Returned {result.row_count} rows.\n\nResults:\n{raw_result}",
+                        content=f"Query executed successfully.\n\nResults:\n{raw_result}",
                         name="query_executor",
                     ),
                 ],
@@ -388,7 +388,7 @@ class DataAgentNodes:
             "retry_count": retry_count,
             "messages": [
                 HumanMessage(
-                    content=f"Error: {error}\n\nPlease fix the query.", name="validator"
+                    content=f"Error: {error}\n\nPlease fix the query.", name="sql_validator"
                 ),
                 AIMessage(content=f"```sql\n{cleaned}\n```", name="sql_generator"),
             ],
