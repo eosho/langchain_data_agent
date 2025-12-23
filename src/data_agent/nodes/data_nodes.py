@@ -388,7 +388,8 @@ class DataAgentNodes:
             "retry_count": retry_count,
             "messages": [
                 HumanMessage(
-                    content=f"Error: {error}\n\nPlease fix the query.", name="sql_validator"
+                    content=f"Error: {error}\n\nPlease fix the query.",
+                    name="sql_validator",
                 ),
                 AIMessage(content=f"```sql\n{cleaned}\n```", name="sql_generator"),
             ],

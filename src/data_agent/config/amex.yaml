@@ -73,6 +73,7 @@ data_agents:
       7. **Use LIMIT** to restrict results (e.g., LIMIT 100) unless the user specifies otherwise.
       8. **Handle NULL values** appropriately with IFNULL, COALESCE, or IS NOT NULL checks.
       9. **Use fully qualified table names** in format `project.dataset.table` or just `dataset.table`.
+      10. **DISTINCT with ORDER BY limitation**: When using DISTINCT inside aggregate functions (e.g., ARRAY_AGG, STRING_AGG), ORDER BY can only reference the column being aggregated, not other columns.
 
       ## Response Format
 
