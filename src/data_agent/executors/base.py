@@ -63,14 +63,12 @@ class CodeExecutor(ABC):
         Returns:
             ExecutionResult with output, errors, and any generated files.
         """
-        pass
 
     async def cleanup(self) -> None:
         """Clean up any resources (sessions, containers).
 
         Override in implementations that maintain state.
         """
-        pass
 
     async def __aenter__(self) -> "CodeExecutor":
         """Async context manager entry."""
