@@ -1,30 +1,10 @@
-"""Code execution backends for sandboxed Python execution.
+"""Code execution backends for sandboxed Python execution."""
 
-This module provides the executor for running LLM-generated Python code
-in Azure Container Apps Dynamic Sessions with Hyper-V isolation.
-
-Usage:
-    from data_agent.executors import create_executor
-
-    # Create from configuration
-    executor = create_executor(config.code_interpreter)
-
-    # Execute code
-    result = await executor.execute("print('Hello')")
-    if result.success:
-        print(result.output)
-
-Note:
-    Visualization support requires deploying an Azure Container Apps
-    session pool. See docs/CONFIGURATION.md for setup instructions.
-"""
-
-from typing import TYPE_CHECKING
+import logging
 
 from data_agent.executors.base import CodeExecutor, ExecutionResult, ExecutionStatus
 
-if TYPE_CHECKING:
-    from data_agent.config import CodeInterpreterConfig
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "CodeExecutor",
@@ -34,26 +14,24 @@ __all__ = [
 ]
 
 
-def create_executor(config: "CodeInterpreterConfig") -> CodeExecutor:
-    """Create a code executor based on configuration.
-
-    Args:
-        config: CodeInterpreterConfig with endpoint settings.
+def create_executor() -> CodeExecutor:
+    """Create a code executor based on environment configuration.
 
     Returns:
-        Configured AzureSessionsExecutor instance.
-
-    Raises:
-        ValueError: If azure_sessions_endpoint is not configured.
-        TypeError: If config is not a CodeInterpreterConfig.
+        Configured CodeExecutor instance.
     """
-    from data_agent.config import CodeInterpreterConfig
+    from data_agent.config import VisualizationSettings
 
-    if not isinstance(config, CodeInterpreterConfig):
-        raise TypeError(f"Expected CodeInterpreterConfig, got {type(config)}")
+    settings = VisualizationSettings()
 
-    from data_agent.executors.azure_sessions import AzureSessionsExecutor
+    if settings.use_azure_sessions:
+        from data_agent.executors.azure_sessions import AzureSessionsExecutor
 
-    return AzureSessionsExecutor(
-        pool_management_endpoint=config.azure_sessions_endpoint,
-    )
+        logger.info("Using Azure Sessions executor")
+        return AzureSessionsExecutor(
+            pool_management_endpoint=settings.azure_sessions_pool_endpoint,
+        )
+    from data_agent.executors.local import LocalExecutor
+
+    logger.info("Using local Python REPL executor (development only, no sandboxing)")
+    return LocalExecutor()

@@ -64,11 +64,9 @@ class DataAgentGraph:
         self._nodes = DataAgentNodes(llm, datasource, config, max_retries)
         self._response_node = ResponseNode(llm, config)
 
-        # Initialize visualization node if code_interpreter is enabled
-        self._viz_node: VisualizationNode | None = None
-        if config.code_interpreter.enabled:
-            executor = create_executor(config.code_interpreter)
-            self._viz_node = VisualizationNode(llm, executor)
+        # Initialize visualization node
+        executor = create_executor()
+        self._viz_node = VisualizationNode(llm, executor)
 
     def _should_retry(self, state: AgentState) -> str:
         """Determine if SQL generation should be retried.
@@ -99,7 +97,7 @@ class DataAgentGraph:
         """
         if state.get("error"):
             return "error"
-        if self._viz_node and state.get("visualization_requested", False):
+        if state.get("visualization_requested", False):
             return "visualize"
         return "respond"
 
@@ -118,8 +116,7 @@ class DataAgentGraph:
         graph.add_node("retry_sql", self._nodes.retry_sql)
         graph.add_node("execute_query", self._nodes.execute_query)
         graph.add_node("generate_response", self._response_node.generate_response)
-        if self._viz_node:
-            graph.add_node("visualize_data", self._viz_node.generate_visualization)
+        graph.add_node("visualize_data", self._viz_node.generate_visualization)
 
         graph.set_entry_point("generate_sql")
 
@@ -139,8 +136,7 @@ class DataAgentGraph:
                 "respond": "generate_response",
             },
         )
-        if self._viz_node:
-            graph.add_edge("visualize_data", "generate_response")
+        graph.add_edge("visualize_data", "generate_response")
         graph.add_edge("generate_response", END)
 
         return graph

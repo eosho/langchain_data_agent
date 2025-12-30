@@ -23,21 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 class AzureSessionsExecutor(CodeExecutor):
-    """Execute code in Azure Container Apps dynamic sessions with Hyper-V isolation.
-
-    The tool uses DefaultAzureCredential internally for authentication.
-    Ensure you have the "Azure ContainerApps Session Executor" role assigned.
-
-    Configuration:
-        pool_management_endpoint: Session pool endpoint URL
-            Can be set via config or AZURE_SESSIONS_POOL_ENDPOINT env var
-
-    Example:
-        executor = AzureSessionsExecutor(
-            pool_management_endpoint="https://eastus.dynamicsessions.io/..."
-        )
-        result = await executor.execute("print('Hello from Azure!')")
-    """
+    """Execute code in Azure Container Apps dynamic sessions with Hyper-V isolation."""
 
     def __init__(
         self,

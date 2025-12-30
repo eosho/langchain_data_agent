@@ -1,12 +1,12 @@
 
-<div align="center">
+<div align="left">
 
 ```diff
 +  ╔╦╗╔═╗╔╦╗╔═╗  ╔═╗╔═╗╔═╗╔╗╔╔╦╗
 +   ║║╠═╣ ║ ╠═╣  ╠═╣║ ╦║╣ ║║║ ║
 +  ═╩╝╩ ╩ ╩ ╩ ╩  ╩ ╩╚═╝╚═╝╝╚╝ ╩
-+
-+  Natural Language → SQL Query Agent
+
+[ Natural Language → SQL Query Agent ]
 ```
 
 </div>
@@ -64,11 +64,11 @@ Generates, validates, and executes SQL queries with retry logic.
 ### Installation
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/eosho/langchain_data_agent
 cd langchain_data_agent
-uv sync
+uv sync --all-extras
 cp .env.example .env
-# Edit .env with your Azure OpenAI credentials
+# Edit .env with your values
 ```
 
 ### CLI Usage
@@ -238,7 +238,7 @@ The platform includes built-in configuration for these databases:
 | PostgreSQL | `postgres` | postgres |
 | Azure SQL | `azure_sql` | tsql |
 | Azure Synapse | `synapse` | tsql |
-| Azure Cosmos DB | `cosmos` | tsql |
+| Azure Cosmos DB | `cosmos` | cosmosdb |
 | Databricks SQL | `databricks` | databricks |
 | Google BigQuery | `bigquery` | bigquery |
 | MySQL | `mysql` | mysql |
@@ -250,13 +250,10 @@ The platform includes built-in configuration for these databases:
 
 ```bash
 # Format and lint
-uv run poe format
+uv run pre-commit run --all-files
 
 # Run tests
 uv run pytest
-
-# Type check
-uv run basedpyright
 ```
 
 ## License

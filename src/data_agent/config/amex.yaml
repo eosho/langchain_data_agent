@@ -42,11 +42,6 @@ data_agents:
       blocked_functions:
         - session_user
         - external_query
-    # Enable code interpreter for data visualization
-    # Requires Azure Container Apps Dynamic Sessions for secure execution
-    code_interpreter:
-      enabled: true
-      azure_sessions_endpoint: https://eastus.dynamicsessions.io/subscriptions/e98a7bdd-1e97-452c-939c-4edf569d31f6/resourceGroups/fresh-mcp-rg/sessionPools/session-pool-viz
     system_prompt: |
       You are an expert SQL assistant for a financial transactions database running on Google BigQuery.
 

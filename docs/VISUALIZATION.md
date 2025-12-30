@@ -27,82 +27,15 @@ Visualization requires Azure Container Apps Dynamic Sessions. This provides:
 
 ## Azure Setup
 
-### 1. Create a Container Apps Environment
+Follow the [Azure Container Apps Dynamic Sessions with LangChain tutorial](https://learn.microsoft.com/en-us/azure/container-apps/sessions-tutorial-langchain) to:
 
-If you don't already have one:
+1. Create a Container Apps session pool
+2. Get the pool management endpoint
+3. Assign the `Azure ContainerApps Session Executor` role to your identity
 
-```bash
-az containerapp env create \
-    --name aca-env \
-    --resource-group rg-data-agent \
-    --location eastus
-```
-
-### 2. Create the Session Pool
-
-```bash
-az containerapp sessionpool create \
-    --name session-pool-viz \
-    --resource-group rg-data-agent \
-    --container-type PythonLTS \
-    --max-sessions 100 \
-    --cooldown-period 300 \
-    --location eastus
-```
-
-**Parameters:**
-- `--container-type PythonLTS`: Python runtime with common data science packages
-- `--max-sessions`: Maximum concurrent sessions
-- `--cooldown-period`: Seconds before idle session is terminated
-
-### 3. Get the Pool Management Endpoint
-
-```bash
-az containerapp sessionpool show \
-    --name session-pool-viz \
-    --resource-group rg-data-agent \
-    --query "properties.poolManagementEndpoint" -o tsv
-```
-
-This returns a URL like:
+Once complete, you'll have an endpoint URL like:
 ```
 https://eastus.dynamicsessions.io/subscriptions/<sub>/resourceGroups/<rg>/sessionPools/<pool>
-```
-
-### 4. Assign the Executor Role
-
-Grant your identity permission to execute code in the session pool:
-
-```bash
-# Get your user ID
-USER_ID=$(az ad signed-in-user show --query id -o tsv)
-
-# Get the session pool resource ID
-POOL_ID=$(az containerapp sessionpool show \
-    --name session-pool-viz \
-    --resource-group rg-data-agent \
-    --query id -o tsv)
-
-# Assign the role
-az role assignment create \
-    --role "Azure ContainerApps Session Executor" \
-    --assignee $USER_ID \
-    --scope $POOL_ID
-```
-
-**Note:** For service principals or managed identities, replace `$USER_ID` with the appropriate object ID.
-
-### 5. Install the SDK
-
-```bash
-pip install langchain-azure-dynamic-sessions
-```
-
-Or add to your `pyproject.toml`:
-```toml
-dependencies = [
-    "langchain-azure-dynamic-sessions>=0.1.0",
-]
 ```
 
 ## Configuration
@@ -120,23 +53,16 @@ Or in `.env`:
 AZURE_SESSIONS_POOL_ENDPOINT=https://eastus.dynamicsessions.io/subscriptions/.../sessionPools/...
 ```
 
-### YAML Configuration
+### Executor Selection
 
-Enable visualization in your agent config:
+The system automatically selects the executor based on environment:
 
-```yaml
-data_agents:
-  - name: "sales_agent"
-    # ... other config ...
-    code_interpreter:
-      enabled: true
-      azure_sessions_endpoint: ${AZURE_SESSIONS_POOL_ENDPOINT}
-```
+| `AZURE_SESSIONS_POOL_ENDPOINT` | Executor | Use Case |
+|-------------------------------|----------|----------|
+| Set | Azure Sessions | Production (secure, Hyper-V isolation) |
+| Not set | Local Python REPL | Development (fast, no sandboxing) |
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| `enabled` | Enable/disable visualization | `false` |
-| `azure_sessions_endpoint` | Session pool management endpoint URL | - |
+**No YAML configuration needed** - visualization is always enabled, with the executor determined by environment.
 
 ### System Prompt
 
@@ -159,43 +85,23 @@ system_prompt: |
 
 ## How It Works
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        User Query                                │
-│            "Show me a bar chart of sales by region"             │
-└─────────────────────────────────────────┬───────────────────────┘
-                                          │
-                                          ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      SQL Generation LLM                          │
-│  Generates SQL + sets visualization_requested: true              │
-└─────────────────────────────────────────┬───────────────────────┘
-                                          │
-                                          ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     Database Query                               │
-│              Execute SQL, return result rows                     │
-└─────────────────────────────────────────┬───────────────────────┘
-                                          │
-                                          ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                   Visualization LLM                              │
-│    Generates matplotlib code based on data + user question       │
-└─────────────────────────────────────────┬───────────────────────┘
-                                          │
-                                          ▼
-┌─────────────────────────────────────────────────────────────────┐
-│              Azure Container Apps Dynamic Sessions               │
-│   • Code executed in Hyper-V isolated container                 │
-│   • plt.show() output captured automatically                    │
-│   • Image returned as base64 PNG                                │
-└─────────────────────────────────────────┬───────────────────────┘
-                                          │
-                                          ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      Response                                    │
-│         Text explanation + embedded chart image                  │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+sequenceDiagram
+    participant User
+    participant SQL LLM
+    participant Database
+    participant Viz LLM
+    participant Executor
+
+    User->>SQL LLM: "Show me a bar chart of sales by region"
+    SQL LLM->>SQL LLM: Generate SQL + set visualization_requested: true
+    SQL LLM->>Database: Execute SQL query
+    Database-->>SQL LLM: Result rows
+    SQL LLM->>Viz LLM: Data + user question
+    Viz LLM->>Viz LLM: Generate matplotlib code
+    Viz LLM->>Executor: Execute code
+    Executor-->>Viz LLM: PNG image (base64)
+    Viz LLM-->>User: Text response + chart image
 ```
 
 ### Execution Flow
@@ -218,9 +124,3 @@ These prompts trigger visualization:
 | "Create a pie chart of transaction types" | Pie chart |
 | "Graph the distribution of order values" | Histogram |
 | "Compare Q1 vs Q2 performance" | Grouped bar |
-
-## Further Reading
-
-- [Azure Container Apps Dynamic Sessions](https://learn.microsoft.com/azure/container-apps/sessions)
-- [Session Pool Management](https://learn.microsoft.com/azure/container-apps/sessions-code-interpreter)
-- [LangChain Azure Dynamic Sessions](https://python.langchain.com/docs/integrations/tools/azure_dynamic_sessions)

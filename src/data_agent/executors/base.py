@@ -45,11 +45,9 @@ class ExecutionResult:
 class CodeExecutor(ABC):
     """Abstract base class for code execution backends.
 
-    Example:
-        executor = AzureSessionsExecutor(pool_management_endpoint="https://...")
-        result = await executor.execute("print('Hello')")
-        if result.success:
-            print(result.output)
+    Implementations:
+        - AzureSessionsExecutor: Production (Hyper-V isolation via Azure Container Apps)
+        - LocalExecutor: Development (no sandboxing, uses exec())
     """
 
     @abstractmethod

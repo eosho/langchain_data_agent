@@ -35,8 +35,6 @@ data_agents:
       blocked_functions:
         - pg_sleep
         - pg_read_file
-    code_interpreter:
-      enabled: true
     system_prompt: |
       You are an SQL assistant...
       {schema_context}
@@ -58,22 +56,21 @@ data_agents:
 
 ## Code Interpreter (Data Visualization)
 
-Enable the code interpreter to generate charts and visualizations from query results. When enabled, the LLM can detect visualization intent (e.g., "show me a chart", "visualize", "plot") and generate matplotlib code to create charts.
+The data agent can generate charts and visualizations from query results. When the LLM detects visualization intent (e.g., "show me a chart", "visualize", "plot"), it generates matplotlib code to create charts.
 
-```yaml
-code_interpreter:
-  enabled: true
-  azure_sessions_endpoint: ${AZURE_SESSIONS_POOL_ENDPOINT}
+Visualization is **automatically enabled** - no YAML configuration needed. The executor is selected based on environment:
+
+| Environment | Executor | Use Case |
+|-------------|----------|----------|
+| `AZURE_SESSIONS_POOL_ENDPOINT` set | Azure Sessions | Production (secure, Hyper-V isolation) |
+| Not set | Local executor | Development (no sandboxing) |
+
+```bash
+# Production: Set the Azure Sessions endpoint
+export AZURE_SESSIONS_POOL_ENDPOINT="https://eastus.dynamicsessions.io/subscriptions/.../sessionPools/..."
 ```
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| `enabled` | Enable/disable visualization generation | `false` |
-| `azure_sessions_endpoint` | Azure Container Apps session pool management endpoint URL | - |
-
-**Note:** Visualization requires Azure Container Apps Dynamic Sessions for secure, isolated code execution.
-
-See [VISUALIZATION.md](VISUALIZATION.md) for complete setup instructions, architecture details, and troubleshooting.
+See [VISUALIZATION.md](VISUALIZATION.md) for Azure setup instructions and troubleshooting.
 
 ## SQL Validation
 

@@ -488,22 +488,6 @@
         }
       }
     },
-    "code_interpreter_config": {
-      "type": "object",
-      "description": "Code interpreter configuration for data visualization. Requires Azure Container Apps Dynamic Sessions for secure, isolated code execution.",
-      "additionalProperties": false,
-      "properties": {
-        "enabled": {
-          "type": "boolean",
-          "description": "Enable code interpreter for visualization. Requires azure_sessions_endpoint to be configured.",
-          "default": false
-        },
-        "azure_sessions_endpoint": {
-          "type": "string",
-          "description": "Azure Container Apps session pool management endpoint URL. Required when enabled. Can also be set via AZURE_SESSIONS_POOL_ENDPOINT environment variable."
-        }
-      }
-    },
     "data_agent_config": {
       "type": "object",
       "description": "Configuration for a single data agent",
@@ -525,9 +509,6 @@
         },
         "validation": {
           "$ref": "#/$defs/validation_config"
-        },
-        "code_interpreter": {
-          "$ref": "#/$defs/code_interpreter_config"
         },
         "system_prompt": {
           "type": "string",

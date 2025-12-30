@@ -60,7 +60,7 @@ class VisualizationNode:
         messages = [
             SystemMessage(content=VISUALIZATION_SYSTEM_PROMPT),
             HumanMessage(
-                content=f"""User question: {state['question']}
+                content=f"""User question: {state["question"]}
 
 Data columns: {columns}
 Data ({len(data)} rows):
@@ -107,19 +107,13 @@ Generate Python code to create an appropriate visualization for this data and qu
                             )
                         ],
                     }
-                else:
-                    output_preview = (
-                        exec_result.output[:500] if exec_result.output else ""
-                    )
-                    logger.error(
-                        "Code executed but no image output: %s", output_preview
-                    )
-                    return {
-                        "visualization_error": f"Code executed but no image: {exec_result.output[:200]}"
-                    }
-            else:
-                logger.error("Code execution failed: %s", exec_result.error)
-                return {"visualization_error": exec_result.error}
+                output_preview = exec_result.output[:500] if exec_result.output else ""
+                logger.error("Code executed but no image output: %s", output_preview)
+                return {
+                    "visualization_error": f"Code executed but no image: {exec_result.output[:200]}"
+                }
+            logger.error("Code execution failed: %s", exec_result.error)
+            return {"visualization_error": exec_result.error}
 
         except Exception as e:
             logger.exception("Visualization code execution failed")

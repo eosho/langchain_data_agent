@@ -219,13 +219,9 @@ async def on_message(message: cl.Message):
             if isinstance(query_result, dict):
                 rows = query_result.get("rows", [])
                 columns = query_result.get("columns", [])
-                row_count = query_result.get("row_count") or len(rows) if rows else 0
             else:
                 rows = getattr(query_result, "rows", [])
                 columns = getattr(query_result, "columns", [])
-                row_count = (
-                    getattr(query_result, "row_count", None) or len(rows) if rows else 0
-                )
 
             if columns and rows:
                 df = pd.DataFrame(rows, columns=columns)
