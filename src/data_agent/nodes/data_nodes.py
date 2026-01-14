@@ -14,9 +14,9 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from data_agent.config import DataAgentConfig
 from data_agent.config_loader import SchemaFormatter
 from data_agent.models.outputs import (
-  QueryResult,
-  SQLGeneratorOutput,
-  SQLValidationOutput,
+    QueryResult,
+    SQLGeneratorOutput,
+    SQLValidationOutput,
 )
 from data_agent.utils.message_utils import get_recent_history
 from data_agent.utils.sql_utils import clean_sql_query

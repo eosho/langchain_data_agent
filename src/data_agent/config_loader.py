@@ -13,15 +13,15 @@ from jsonschema import Draft7Validator, ValidationError
 from pydantic_settings import BaseSettings
 
 from .config import (
-  CONFIG_DIR,
-  DATASOURCE_TYPES,
-  AgentConfig,
-  DataAgentConfig,
-  Datasource,
-  FewShotExample,
-  LLMConfig,
-  TableSchema,
-  ValidationConfig,
+    CONFIG_DIR,
+    DATASOURCE_TYPES,
+    AgentConfig,
+    DataAgentConfig,
+    Datasource,
+    FewShotExample,
+    LLMConfig,
+    TableSchema,
+    ValidationConfig,
 )
 
 SCHEMA_PATH = CONFIG_DIR / "schema" / "agent_config.schema.json"

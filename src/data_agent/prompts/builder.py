@@ -7,9 +7,9 @@ the final system prompt by appending all components in order.
 import logging
 
 from data_agent.prompts.defaults import (
-  COSMOS_PROMPT_ADDENDUM,
-  DEFAULT_RESPONSE_PROMPT,
-  DEFAULT_SQL_PROMPT,
+    COSMOS_PROMPT_ADDENDUM,
+    DEFAULT_RESPONSE_PROMPT,
+    DEFAULT_SQL_PROMPT,
 )
 from data_agent.prompts.dialects import get_dialect_guidelines
 from data_agent.utils.sql_utils import build_date_context

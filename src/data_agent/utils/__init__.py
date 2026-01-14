@@ -2,9 +2,9 @@
 
 from data_agent.utils.message_utils import get_recent_history
 from data_agent.utils.sql_utils import (
-  build_date_context,
-  clean_sql_query,
-  pretty_sql,
+    build_date_context,
+    clean_sql_query,
+    pretty_sql,
 )
 
 __all__ = [

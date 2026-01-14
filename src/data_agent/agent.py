@@ -19,22 +19,22 @@ from langgraph.types import Command, interrupt
 
 from data_agent.adapters import CosmosAdapter, create_sql_database
 from data_agent.config import (
-  AgentConfig,
-  AzureSQLDatasource,
-  BigQueryDatasource,
-  CosmosDatasource,
-  DataAgentConfig,
-  DatabricksDatasource,
-  PostgresDatasource,
-  SynapseDatasource,
+    AgentConfig,
+    AzureSQLDatasource,
+    BigQueryDatasource,
+    CosmosDatasource,
+    DataAgentConfig,
+    DatabricksDatasource,
+    PostgresDatasource,
+    SynapseDatasource,
 )
 from data_agent.config_loader import ConfigLoader
 from data_agent.graph import create_data_agent
 from data_agent.llm import get_llm
 from data_agent.models.state import AgentState, InputState, OutputState
 from data_agent.prompts.defaults import (
-  DEFAULT_GENERAL_CHAT_PROMPT,
-  DEFAULT_INTENT_DETECTION_PROMPT,
+    DEFAULT_GENERAL_CHAT_PROMPT,
+    DEFAULT_INTENT_DETECTION_PROMPT,
 )
 from data_agent.utils.callbacks import AgentCallback
 from data_agent.utils.message_utils import get_recent_history

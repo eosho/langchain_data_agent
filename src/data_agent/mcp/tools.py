@@ -168,8 +168,8 @@ def register_tools(mcp: FastMCP, ctx: MCPServerContext) -> None:
 
         try:
             from data_agent.validators.sql_validator import (
-              SQLValidator,
-              ValidationStatus,
+                SQLValidator,
+                ValidationStatus,
             )
 
             # Get dialect from datasource config

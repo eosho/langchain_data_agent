@@ -14,10 +14,10 @@ from rich.prompt import Prompt
 from data_agent import DataAgentFlow
 from data_agent.cli.console import console, print_error
 from data_agent.cli.output import (
-  print_dashboard,
-  print_error_panel,
-  print_query_info,
-  print_response,
+    print_dashboard,
+    print_error_panel,
+    print_query_info,
+    print_response,
 )
 from data_agent.config import CONFIG_DIR, AgentConfig
 from data_agent.config_loader import ConfigLoader
