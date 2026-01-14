@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Union
 from uuid import uuid4
 
 from langchain_community.utilities.sql_database import SQLDatabase
+from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
@@ -94,10 +95,16 @@ class DataAgentFlow:
             "api_version": api_version,
         }
 
+        self._workflow_llm: BaseChatModel = get_llm(
+            provider="azure_openai",
+            azure_endpoint=azure_endpoint,
+            api_key=api_key,
+            deployment_name=deployment_name,
+            api_version=api_version,
+        )
+
         self._callback = AgentCallback(agent_name="data_agent_flow")
-
         self._initialize_agents()
-
         self._graph = self._build_workflow()
 
     def _initialize_agents(self) -> None:
@@ -265,28 +272,6 @@ class DataAgentFlow:
         agent_names = list(self.data_agents.keys())
         agent_descriptions = self._agent_descriptions
 
-        # Use the first data agent's LLM config for intent detection, or defaults
-        if self.config.data_agents:
-            first_llm_cfg = self.config.data_agents[0].llm_config
-            llm = get_llm(
-                provider=first_llm_cfg.provider or "azure_openai",
-                azure_endpoint=self._default_llm_settings["azure_endpoint"],
-                api_key=self._default_llm_settings["api_key"],
-                deployment_name=first_llm_cfg.model
-                or self._default_llm_settings["deployment_name"],
-                api_version=first_llm_cfg.api_version
-                or self._default_llm_settings["api_version"],
-                temperature=first_llm_cfg.temperature,
-            )
-        else:
-            llm = get_llm(
-                provider="azure_openai",
-                azure_endpoint=self._default_llm_settings["azure_endpoint"],
-                api_key=self._default_llm_settings["api_key"],
-                deployment_name=self._default_llm_settings["deployment_name"],
-                api_version=self._default_llm_settings["api_version"],
-            )
-
         # Valid intents include all agent names plus "general_chat"
         valid_intents = agent_names + ["general_chat"]
 
@@ -310,7 +295,7 @@ class DataAgentFlow:
                 HumanMessage(content=question),
             ]
 
-            response = llm.invoke(messages)
+            response = self._workflow_llm.invoke(messages)
             content = response.content
             selected_agent = (
                 content.strip()
@@ -337,7 +322,7 @@ class DataAgentFlow:
                         SystemMessage(content=system_content),
                         HumanMessage(content=clarified_question),
                     ]
-                    response = llm.invoke(messages)
+                    response = self._workflow_llm.invoke(messages)
                     content = response.content
                     selected_agent = (
                         content.strip()
@@ -415,7 +400,7 @@ class DataAgentFlow:
 Respond with ONLY the rewritten question, nothing else."""
 
             messages = [HumanMessage(content=rewrite_prompt)]
-            response = llm.invoke(messages)
+            response = self._workflow_llm.invoke(messages)
             content = response.content
             rewritten = (
                 content.strip()
@@ -458,7 +443,7 @@ Respond with ONLY the rewritten question, nothing else."""
                 HumanMessage(content=question),
             ]
 
-            response = llm.invoke(messages)
+            response = self._workflow_llm.invoke(messages)
             content = response.content
             response_text = (
                 content.strip()
