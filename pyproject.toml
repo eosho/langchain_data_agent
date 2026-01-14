@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "data-agent"
-version = "0.3.0"
+version = "0.3.1"
 description = "NL2SQL Query & Retrieval Platform - Natural language to SQL conversion with multi-datasource support"
 authors = [{ name = "Your Name", email = "your.email@example.com" }]
 license = "MIT"
