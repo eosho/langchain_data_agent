@@ -88,13 +88,6 @@ class DataAgentFlow:
         self._agent_descriptions: dict[str, str] = {}
         self._shared_db = shared_db
 
-        self._default_llm_settings = {
-            "azure_endpoint": azure_endpoint,
-            "api_key": api_key,
-            "deployment_name": deployment_name,
-            "api_version": api_version,
-        }
-
         self._workflow_llm: BaseChatModel = get_llm(
             provider="azure_openai",
             azure_endpoint=azure_endpoint,
@@ -212,25 +205,24 @@ class DataAgentFlow:
     def _create_agent_graph(self, name: str, agent_config: DataAgentConfig) -> None:
         """Create the LangGraph agent for a data agent.
 
-        LLM configuration is a hybrid of YAML and default settings:
-        - From YAML: provider, model, api_version, temperature
-        - From defaults (init params): azure_endpoint, api_key
+        Uses the workflow LLM by default. If the agent has custom LLM settings
+        defined in its YAML, creates a new LLM instance.
 
         Args:
             name: Name of the agent.
             agent_config: Data agent configuration from YAML.
         """
         llm_cfg = agent_config.llm_config
-        agent_llm = get_llm(
-            provider=llm_cfg.provider or "azure_openai",
-            azure_endpoint=self._default_llm_settings["azure_endpoint"],
-            api_key=self._default_llm_settings["api_key"],
-            deployment_name=llm_cfg.model
-            or self._default_llm_settings["deployment_name"],
-            api_version=llm_cfg.api_version
-            or self._default_llm_settings["api_version"],
-            temperature=llm_cfg.temperature,
-        )
+        if llm_cfg:
+            agent_llm = get_llm(
+                provider=llm_cfg.provider or "azure_openai",
+                deployment_name=llm_cfg.model,
+                api_version=llm_cfg.api_version,
+                temperature=llm_cfg.temperature,
+            )
+        else:
+            agent_llm = self._workflow_llm
+
         self.data_agents[name] = create_data_agent(
             llm=agent_llm,
             datasource=self.datasources[name],
