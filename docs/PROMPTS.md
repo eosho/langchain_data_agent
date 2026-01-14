@@ -83,24 +83,27 @@ prompt = build_prompt(
 
 ### Custom Prompts via Configuration
 
-Teams can override default prompts in their YAML configuration:
+Teams can override default prompts in their agent YAML configuration using `system_prompt` and `response_prompt`:
 
 ```yaml
-name: my_agent
-datasource:
-  type: postgres
-  # ...
-prompts:
-  sql_prompt: |
-    You are a SQL expert for our e-commerce database.
-    Focus on sales metrics and customer behavior.
+data_agents:
+  - name: my_agent
+    description: E-commerce sales database
+    datasource:
+      type: postgres
+      # ...
+    system_prompt: |
+      You are a SQL expert for our e-commerce database.
+      Focus on sales metrics and customer behavior.
 
-    {schema_context}
+      {schema_context}
 
-    {few_shot_examples}
-  response_prompt: |
-    Provide insights focused on business impact.
-    Always mention revenue implications.
+      {few_shot_examples}
+    response_prompt: |
+      Provide insights focused on business impact.
+      Always mention revenue implications.
+    table_schemas:
+      # ...
 ```
 
 ### Getting Dialect Guidelines
@@ -168,17 +171,3 @@ __all__ = [
     "MY_NEW_PROMPT",
 ]
 ```
-
-## Best Practices
-
-1. **Keep prompts focused** - Each prompt should have a single responsibility
-2. **Use schema context** - Always include relevant schema information for SQL generation
-3. **Provide few-shot examples** - Examples significantly improve query accuracy
-4. **Test with your data** - Dialect guidelines may need tuning for specific schemas
-5. **Log prompts during development** - Use `DEBUG` logging to inspect assembled prompts
-
-## Related Modules
-
-- [`config.py`](../src/data_agent/config.py) - Configuration models including prompt overrides
-- [`nodes/data_nodes.py`](../src/data_agent/nodes/data_nodes.py) - Nodes that consume prompts
-- [`nodes/visualization.py`](../src/data_agent/nodes/visualization.py) - Visualization prompt usage
