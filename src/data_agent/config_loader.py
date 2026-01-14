@@ -13,16 +13,15 @@ from jsonschema import Draft7Validator, ValidationError
 from pydantic_settings import BaseSettings
 
 from .config import (
-    CONFIG_DIR,
-    DATASOURCE_TYPES,
-    AgentConfig,
-    DataAgentConfig,
-    Datasource,
-    FewShotExample,
-    IntentDetectionConfig,
-    LLMConfig,
-    TableSchema,
-    ValidationConfig,
+  CONFIG_DIR,
+  DATASOURCE_TYPES,
+  AgentConfig,
+  DataAgentConfig,
+  Datasource,
+  FewShotExample,
+  LLMConfig,
+  TableSchema,
+  ValidationConfig,
 )
 
 SCHEMA_PATH = CONFIG_DIR / "schema" / "agent_config.schema.json"
@@ -126,7 +125,6 @@ class ConfigLoader:
         """Load and merge all configuration files from the config directory.
 
         Combines data_agents from all configs into a single AgentConfig.
-        Uses intent_detection settings from the first config found.
 
         Args:
             validate: Whether to validate against JSON schema (default True).
@@ -150,9 +148,6 @@ class ConfigLoader:
     def _parse_config(cls, data: dict[str, Any]) -> AgentConfig:
         """Parse raw config dict into AgentConfig."""
         return AgentConfig(
-            intent_detection=IntentDetectionConfig.from_dict(
-                data.get("intent_detection_agent", {})
-            ),
             data_agents=[cls._parse_data_agent(a) for a in data.get("data_agents", [])],
             max_retries=data.get("max_retries", 3),
         )

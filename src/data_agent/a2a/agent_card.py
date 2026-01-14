@@ -5,9 +5,9 @@ and is served at /.well-known/agent-card.json.
 """
 
 from a2a.types import (
-    AgentCapabilities,
-    AgentCard,
-    AgentSkill,
+  AgentCapabilities,
+  AgentCard,
+  AgentSkill,
 )
 
 SUPPORTED_CONTENT_TYPES = ["text", "text/plain"]

@@ -3,15 +3,15 @@
 from data_agent.adapters import CosmosAdapter, create_sql_database
 from data_agent.agent import DataAgentFlow
 from data_agent.config import (
-    AgentConfig,
-    AzureSQLDatasource,
-    BigQueryDatasource,
-    CosmosDatasource,
-    DataAgentConfig,
-    DatabricksDatasource,
-    Datasource,
-    PostgresDatasource,
-    SynapseDatasource,
+  AgentConfig,
+  AzureSQLDatasource,
+  BigQueryDatasource,
+  CosmosDatasource,
+  DataAgentConfig,
+  DatabricksDatasource,
+  Datasource,
+  PostgresDatasource,
+  SynapseDatasource,
 )
 from data_agent.config_loader import ConfigLoader, SchemaFormatter
 from data_agent.core import setup_logging

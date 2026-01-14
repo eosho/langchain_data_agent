@@ -14,10 +14,10 @@ from rich.prompt import Prompt
 from data_agent import DataAgentFlow
 from data_agent.cli.console import console, print_error
 from data_agent.cli.output import (
-    print_dashboard,
-    print_error_panel,
-    print_query_info,
-    print_response,
+  print_dashboard,
+  print_error_panel,
+  print_query_info,
+  print_response,
 )
 from data_agent.config import CONFIG_DIR, AgentConfig
 from data_agent.config_loader import ConfigLoader
@@ -505,6 +505,83 @@ def a2a(
         port=port,
         log_level=log_level,
     )
+
+
+@app.command()
+def mcp(
+    config: Annotated[
+        str | None,
+        typer.Option(
+            "--config",
+            "-c",
+            help="Configuration name to load. Loads all configs if not specified.",
+        ),
+    ] = None,
+    transport: Annotated[
+        str,
+        typer.Option(
+            "--transport",
+            "-t",
+            help="Transport mechanism: stdio (for Claude Desktop) or sse (for HTTP).",
+        ),
+    ] = "stdio",
+    port: Annotated[
+        int,
+        typer.Option(
+            "--port",
+            "-p",
+            help="Port for SSE transport.",
+        ),
+    ] = 8002,
+    log_level: Annotated[
+        str,
+        typer.Option(
+            "--log-level",
+            help="Logging level.",
+        ),
+    ] = "warning",
+) -> None:
+    """Start the MCP (Model Context Protocol) server.
+
+    This exposes the NL2SQL Data Agent via MCP, enabling integration
+    with Claude Desktop, VS Code, Cursor, and other MCP clients.
+
+    Available tools:
+        - query: Execute natural language queries
+        - list_datasources: List available datasources
+        - get_schema: Get database schema for a datasource
+
+    Examples:
+        # Start with stdio transport (for Claude Desktop)
+        data-agent mcp
+
+        # Start with SSE transport for HTTP clients
+        data-agent mcp --transport sse --port 8002
+
+        # Start with a specific config
+        data-agent mcp --config contoso
+    """
+    from data_agent.mcp import create_mcp_server
+
+    if config:
+        validate_config(config)
+
+    console.print("[cyan]Starting MCP server...[/cyan]")
+    console.print(f"  Transport: [green]{transport}[/green]")
+    console.print(f"  Config: [green]{config or 'all'}[/green]")
+    if transport == "sse":
+        console.print(f"  Port: [green]{port}[/green]")
+    console.print()
+
+    mcp_server = create_mcp_server(config_name=config)
+
+    if transport == "stdio":
+        mcp_server.run(transport="stdio")
+    else:
+        # Set port for SSE transport
+        mcp_server.settings.host = "127.0.0.1"
+        mcp_server.settings.port = port
+        mcp_server.run(transport="sse")
 
 
 if __name__ == "__main__":

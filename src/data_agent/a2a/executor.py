@@ -10,16 +10,16 @@ from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from a2a.server.tasks import TaskUpdater
 from a2a.types import (
-    InternalError,
-    InvalidParamsError,
-    Part,
-    TaskState,
-    TextPart,
-    UnsupportedOperationError,
+  InternalError,
+  InvalidParamsError,
+  Part,
+  TaskState,
+  TextPart,
+  UnsupportedOperationError,
 )
 from a2a.utils import (
-    new_agent_text_message,
-    new_task,
+  new_agent_text_message,
+  new_task,
 )
 from a2a.utils.errors import ServerError
 

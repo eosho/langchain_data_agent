@@ -1,19 +1,6 @@
 # Configuration
 
-Data agents are configured via YAML files. See `src/data_agent/config/contoso.yaml` for a complete example.
-
-## Intent Detection
-
-```yaml
-intent_detection_agent:
-  llm:
-    model: gpt-4o
-    provider: azure_openai
-    temperature: 0.0
-  system_prompt: |
-    You are an intent detection assistant...
-    {agent_descriptions}
-```
+Data agents are configured via YAML files. See `src/data_agent/agents/contoso.yaml` for a complete example.
 
 ## Data Agent Definition
 

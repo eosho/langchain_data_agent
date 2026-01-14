@@ -19,19 +19,23 @@ from langgraph.types import Command, interrupt
 
 from data_agent.adapters import CosmosAdapter, create_sql_database
 from data_agent.config import (
-    AgentConfig,
-    AzureSQLDatasource,
-    BigQueryDatasource,
-    CosmosDatasource,
-    DataAgentConfig,
-    DatabricksDatasource,
-    PostgresDatasource,
-    SynapseDatasource,
+  AgentConfig,
+  AzureSQLDatasource,
+  BigQueryDatasource,
+  CosmosDatasource,
+  DataAgentConfig,
+  DatabricksDatasource,
+  PostgresDatasource,
+  SynapseDatasource,
 )
 from data_agent.config_loader import ConfigLoader
 from data_agent.graph import create_data_agent
 from data_agent.llm import get_llm
 from data_agent.models.state import AgentState, InputState, OutputState
+from data_agent.prompts.defaults import (
+  DEFAULT_GENERAL_CHAT_PROMPT,
+  DEFAULT_INTENT_DETECTION_PROMPT,
+)
 from data_agent.utils.callbacks import AgentCallback
 from data_agent.utils.message_utils import get_recent_history
 
@@ -82,17 +86,6 @@ class DataAgentFlow:
         self.data_agents: dict[str, CompiledStateGraph] = {}
         self._agent_descriptions: dict[str, str] = {}
         self._shared_db = shared_db
-
-        self._intent_llm = get_llm(
-            provider=self.config.intent_detection.llm_config.provider,
-            azure_endpoint=azure_endpoint,
-            api_key=api_key,
-            deployment_name=self.config.intent_detection.llm_config.model
-            or deployment_name,
-            api_version=self.config.intent_detection.llm_config.api_version
-            or api_version,
-            temperature=self.config.intent_detection.llm_config.temperature,
-        )
 
         self._default_llm_settings = {
             "azure_endpoint": azure_endpoint,
@@ -210,7 +203,16 @@ class DataAgentFlow:
                 return None
 
     def _create_agent_graph(self, name: str, agent_config: DataAgentConfig) -> None:
-        """Create the LangGraph agent for a data agent."""
+        """Create the LangGraph agent for a data agent.
+
+        LLM configuration is a hybrid of YAML and default settings:
+        - From YAML: provider, model, api_version, temperature
+        - From defaults (init params): azure_endpoint, api_key
+
+        Args:
+            name: Name of the agent.
+            agent_config: Data agent configuration from YAML.
+        """
         llm_cfg = agent_config.llm_config
         agent_llm = get_llm(
             provider=llm_cfg.provider or "azure_openai",
@@ -262,8 +264,31 @@ class DataAgentFlow:
         """
         agent_names = list(self.data_agents.keys())
         agent_descriptions = self._agent_descriptions
-        intent_llm = self._intent_llm
-        intent_system_prompt = self.config.intent_detection.system_prompt
+
+        # Use the first data agent's LLM config for intent detection, or defaults
+        if self.config.data_agents:
+            first_llm_cfg = self.config.data_agents[0].llm_config
+            llm = get_llm(
+                provider=first_llm_cfg.provider or "azure_openai",
+                azure_endpoint=self._default_llm_settings["azure_endpoint"],
+                api_key=self._default_llm_settings["api_key"],
+                deployment_name=first_llm_cfg.model
+                or self._default_llm_settings["deployment_name"],
+                api_version=first_llm_cfg.api_version
+                or self._default_llm_settings["api_version"],
+                temperature=first_llm_cfg.temperature,
+            )
+        else:
+            llm = get_llm(
+                provider="azure_openai",
+                azure_endpoint=self._default_llm_settings["azure_endpoint"],
+                api_key=self._default_llm_settings["api_key"],
+                deployment_name=self._default_llm_settings["deployment_name"],
+                api_version=self._default_llm_settings["api_version"],
+            )
+
+        # Valid intents include all agent names plus "general_chat"
+        valid_intents = agent_names + ["general_chat"]
 
         def intent_detection_node(state: AgentState) -> dict[str, Any]:
             """Detect user intent and select the appropriate data agent."""
@@ -273,7 +298,9 @@ class DataAgentFlow:
                 [f"- {name}: {desc}" for name, desc in agent_descriptions.items()]
             )
 
-            system_content = intent_system_prompt.format(agent_descriptions=agent_list)
+            system_content = DEFAULT_INTENT_DETECTION_PROMPT.format(
+                agent_descriptions=agent_list
+            )
 
             history = get_recent_history(state.get("messages", []), max_messages=4)
 
@@ -283,7 +310,7 @@ class DataAgentFlow:
                 HumanMessage(content=question),
             ]
 
-            response = intent_llm.invoke(messages)
+            response = llm.invoke(messages)
             content = response.content
             selected_agent = (
                 content.strip()
@@ -291,7 +318,7 @@ class DataAgentFlow:
                 else str(content[0]).strip() if content else ""
             )
 
-            if selected_agent not in agent_names:
+            if selected_agent not in valid_intents:
                 clarification = interrupt(
                     {
                         "type": "clarification_needed",
@@ -310,14 +337,14 @@ class DataAgentFlow:
                         SystemMessage(content=system_content),
                         HumanMessage(content=clarified_question),
                     ]
-                    response = intent_llm.invoke(messages)
+                    response = llm.invoke(messages)
                     content = response.content
                     selected_agent = (
                         content.strip()
                         if isinstance(content, str)
                         else str(content[0]).strip() if content else ""
                     )
-                    if selected_agent in agent_names:
+                    if selected_agent in valid_intents:
                         return {
                             "question": clarified_question,
                             "datasource_name": selected_agent,
@@ -388,7 +415,7 @@ class DataAgentFlow:
 Respond with ONLY the rewritten question, nothing else."""
 
             messages = [HumanMessage(content=rewrite_prompt)]
-            response = intent_llm.invoke(messages)
+            response = llm.invoke(messages)
             content = response.content
             rewritten = (
                 content.strip()
@@ -413,6 +440,40 @@ Respond with ONLY the rewritten question, nothing else."""
             if not datasource or state.get("error") == "out_of_scope":
                 return "out_of_scope"
             return datasource
+
+        def general_chat_node(state: AgentState) -> dict[str, Any]:
+            """Handle general conversation like greetings and capability questions."""
+            question = state["question"]
+
+            agent_list = "\n".join(
+                [f"- **{name}**: {desc}" for name, desc in agent_descriptions.items()]
+            )
+
+            system_content = DEFAULT_GENERAL_CHAT_PROMPT.format(
+                agent_descriptions=agent_list
+            )
+
+            messages = [
+                SystemMessage(content=system_content),
+                HumanMessage(content=question),
+            ]
+
+            response = llm.invoke(messages)
+            content = response.content
+            response_text = (
+                content.strip()
+                if isinstance(content, str)
+                else str(content[0]).strip() if content else ""
+            )
+
+            return {
+                "final_response": response_text,
+                "error": None,
+                "messages": [
+                    HumanMessage(content=question, name="user"),
+                    AIMessage(content=response_text, name="general_chat"),
+                ],
+            }
 
         def out_of_scope_node(state: AgentState) -> dict[str, Any]:
             """Handle out-of-scope requests."""
@@ -440,6 +501,7 @@ Respond with ONLY the rewritten question, nothing else."""
 
         workflow.add_node("intent_detection", intent_detection_node)
         workflow.add_node("query_rewrite", query_rewrite_node)
+        workflow.add_node("general_chat", general_chat_node)
         workflow.add_node("out_of_scope", out_of_scope_node)
 
         for name, agent in self.data_agents.items():
@@ -448,16 +510,18 @@ Respond with ONLY the rewritten question, nothing else."""
         workflow.add_edge(START, "intent_detection")
 
         def route_after_intent(state: AgentState) -> str:
-            """Route to query_rewrite or out_of_scope after intent detection."""
+            """Route to query_rewrite, general_chat, or out_of_scope after intent detection."""
             datasource = state.get("datasource_name", "")
             if not datasource or state.get("error") == "out_of_scope":
                 return "out_of_scope"
+            if datasource == "general_chat":
+                return "general_chat"
             return "query_rewrite"
 
         workflow.add_conditional_edges(
             "intent_detection",
             route_after_intent,
-            path_map=["query_rewrite", "out_of_scope"],
+            path_map=["query_rewrite", "general_chat", "out_of_scope"],
         )
 
         routing_map: dict[str, str] = {name: name for name in agent_names}
@@ -468,6 +532,7 @@ Respond with ONLY the rewritten question, nothing else."""
             path_map=list(routing_map.keys()),
         )
 
+        workflow.add_edge("general_chat", END)
         workflow.add_edge("out_of_scope", END)
         for name in agent_names:
             workflow.add_edge(name, END)

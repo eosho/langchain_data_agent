@@ -1,13 +1,18 @@
-"""
-Logging configuration for the Terminal Agent.
-"""
+"""Logging configuration for the Data Agent."""
 
 import logging
 import logging.config
 
 
 def setup_logging(default_level: int = logging.INFO) -> None:
-    """Configure structured logging for the entire package."""
+    """Configure structured logging for the entire package.
+
+    Args:
+        default_level: Default logging level (e.g., logging.INFO).
+
+    Returns:
+        None
+    """
     level_name = logging.getLevelName(default_level)
     logging_config = {
         "version": 1,
@@ -41,6 +46,7 @@ def setup_logging(default_level: int = logging.INFO) -> None:
         "httpx",
         "azure.identity",
         "chainlit",
+        "mcp.server.lowlevel.server",
     ]
     for logger_name in noisy_loggers:
         logging.getLogger(logger_name).setLevel(logging.WARNING)

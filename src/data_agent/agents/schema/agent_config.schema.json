@@ -6,9 +6,6 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "intent_detection_agent": {
-      "$ref": "#/$defs/intent_detection_config"
-    },
     "data_agents": {
       "type": "array",
       "description": "List of data agent configurations",
@@ -71,20 +68,6 @@
       "required": [
         "model"
       ]
-    },
-    "intent_detection_config": {
-      "type": "object",
-      "description": "Configuration for intent detection agent",
-      "additionalProperties": false,
-      "properties": {
-        "llm": {
-          "$ref": "#/$defs/llm_config"
-        },
-        "system_prompt": {
-          "type": "string",
-          "description": "System prompt for intent detection. Use {agent_descriptions} placeholder."
-        }
-      }
     },
     "column_schema": {
       "type": "object",

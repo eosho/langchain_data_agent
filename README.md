@@ -31,6 +31,7 @@ Built on top of LangChain's [`SQLDatabase`](https://docs.langchain.com/oss/pytho
 - **Data Visualization**: Generate charts and graphs from query results using natural language (e.g., "show me a bar chart")
 - **Configurable Agents**: YAML-based configuration for adding new data sources
 - **A2A Protocol**: Agent-to-Agent interoperability for integration with other A2A-compliant systems
+- **MCP Protocol**: Model Context Protocol support for Claude Desktop, VS Code, and other MCP clients
 
 ## Architecture
 
@@ -51,7 +52,9 @@ Generates, validates, and executes SQL queries with retry logic.
 - [Database Setup](docs/DATABASE_SETUP.md)
 - [Configuration](docs/CONFIGURATION.md)
 - [Data Visualization](docs/VISUALIZATION.md)
+- [Prompts & Dialects](docs/PROMPTS.md)
 - [A2A Protocol](docs/A2A.md)
+- [MCP Protocol](docs/MCP.md)
 
 ## Quick Start
 

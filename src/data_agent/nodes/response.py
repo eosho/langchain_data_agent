@@ -17,7 +17,7 @@ from data_agent.utils.message_utils import get_recent_history
 if TYPE_CHECKING:
     from data_agent.models.state import AgentState
 
-from data_agent.prompts import DEFAULT_RESPONSE_PROMPT
+from data_agent.prompts.builder import build_response_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ class ResponseNode:
         Returns:
             State update with final response and messages.
         """
-        prompt = self._config.response_prompt or DEFAULT_RESPONSE_PROMPT
+        prompt = build_response_prompt(self._config.response_prompt)
 
         question = state["question"]
         sql = state.get("generated_sql", "")

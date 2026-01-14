@@ -14,15 +14,15 @@ from uuid import uuid4
 import httpx
 from a2a.client import A2ACardResolver, ClientConfig, ClientFactory
 from a2a.types import (
-    AgentCard,
-    Message,
-    Part,
-    Role,
-    TextPart,
+  AgentCard,
+  Message,
+  Part,
+  Role,
+  TextPart,
 )
 from a2a.utils.constants import (
-    AGENT_CARD_WELL_KNOWN_PATH,
-    EXTENDED_AGENT_CARD_PATH,
+  AGENT_CARD_WELL_KNOWN_PATH,
+  EXTENDED_AGENT_CARD_PATH,
 )
 
 logger = logging.getLogger(__name__)

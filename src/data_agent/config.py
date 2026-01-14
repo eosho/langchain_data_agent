@@ -11,7 +11,7 @@ from typing import Any, Literal
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-CONFIG_DIR = Path(__file__).resolve().parent / "config"
+CONFIG_DIR = Path(__file__).resolve().parent / "agents"
 
 DatasourceType = Literal[
     "databricks", "cosmos", "postgres", "azure_sql", "synapse", "bigquery"
@@ -363,26 +363,8 @@ class DataAgentConfig:
 
 
 @dataclass
-class IntentDetectionConfig:
-    """Configuration for intent detection agent."""
-
-    llm_config: LLMConfig = field(default_factory=LLMConfig)
-    system_prompt: str = ""
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "IntentDetectionConfig":
-        return cls(
-            llm_config=LLMConfig.from_dict(data.get("llm", {})),
-            system_prompt=data.get("system_prompt", ""),
-        )
-
-
-@dataclass
 class AgentConfig:
     """Complete agent configuration."""
 
-    intent_detection: IntentDetectionConfig = field(
-        default_factory=IntentDetectionConfig
-    )
     data_agents: list[DataAgentConfig] = field(default_factory=list)
     max_retries: int = 3
