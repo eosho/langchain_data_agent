@@ -32,6 +32,29 @@ You help users query and analyze data from the following domains:
 - Guide users toward asking data-related questions.
 """
 
+DEFAULT_QUERY_REWRITE_PROMPT = """You are a query rewriter. Your job is to rewrite user questions to be more specific and clear for a database query system.
+
+## Target Agent
+{agent_description}
+
+## Conversation Context
+{conversation_context}
+
+## Instructions
+1. Keep the original intent of the question
+2. If this is a follow-up question (e.g., "what's the average?", "show me the same for X", "filter those by Y"), use the conversation history to expand the question with the relevant context
+3. For follow-up questions, make the implicit references explicit (e.g., "What's the average?" → "What is the average transaction amount?" if previous query was about transactions)
+4. Make the question more specific if needed
+5. If the question is already clear and specific, return it unchanged
+6. Do NOT add information that wasn't implied by the original question or conversation
+
+## Original Question
+{question}
+
+## Rewritten Question
+Respond with ONLY the rewritten question, nothing else.
+"""
+
 DEFAULT_SQL_PROMPT = """You are a SQL expert. Generate a syntactically correct SQL query.
 Limit results to 10 unless specified. Only select relevant columns.
 

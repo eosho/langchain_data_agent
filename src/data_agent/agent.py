@@ -36,6 +36,7 @@ from data_agent.models.state import AgentState, InputState, OutputState
 from data_agent.prompts.defaults import (
     DEFAULT_GENERAL_CHAT_PROMPT,
     DEFAULT_INTENT_DETECTION_PROMPT,
+    DEFAULT_QUERY_REWRITE_PROMPT,
 )
 from data_agent.utils.callbacks import AgentCallback
 from data_agent.utils.message_utils import get_recent_history
@@ -369,27 +370,11 @@ class DataAgentFlow:
                     content = getattr(msg, "content", str(msg))[:500]
                     conversation_context += f"- {msg_type}: {content}\n"
 
-            rewrite_prompt = f"""You are a query rewriter. Your job is to rewrite user questions to be more specific and clear for a database query system.
-
-## Target Agent
-{agent_desc}
-
-## Conversation Context
-{conversation_context}
-
-## Instructions
-1. Keep the original intent of the question
-2. If this is a follow-up question (e.g., "what's the average?", "show me the same for X", "filter those by Y"), use the conversation history to expand the question with the relevant context
-3. For follow-up questions, make the implicit references explicit (e.g., "What's the average?" → "What is the average transaction amount?" if previous query was about transactions)
-4. Make the question more specific if needed
-5. If the question is already clear and specific, return it unchanged
-6. Do NOT add information that wasn't implied by the original question or conversation
-
-## Original Question
-{question}
-
-## Rewritten Question
-Respond with ONLY the rewritten question, nothing else."""
+            rewrite_prompt = DEFAULT_QUERY_REWRITE_PROMPT.format(
+                agent_description=agent_desc,
+                conversation_context=conversation_context,
+                question=question,
+            )
 
             messages = [HumanMessage(content=rewrite_prompt)]
             response = self._workflow_llm.invoke(messages)
