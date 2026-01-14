@@ -19,7 +19,7 @@ from data_agent.models.outputs import (
     SQLValidationOutput,
 )
 from data_agent.utils.message_utils import get_recent_history
-from data_agent.utils.sql_utils import build_date_context, clean_sql_query
+from data_agent.utils.sql_utils import clean_sql_query
 from data_agent.validators.sql_validator import SQLValidator, ValidationStatus
 
 if TYPE_CHECKING:
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from data_agent.adapters.azure.cosmos import CosmosAdapter
     from data_agent.models.state import AgentState
 
-from data_agent.prompts import COSMOS_PROMPT_ADDENDUM, DEFAULT_SQL_PROMPT
+from data_agent.prompts.builder import build_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -128,30 +128,28 @@ class DataAgentNodes:
         return ""
 
     def _build_prompt(self) -> str:
-        """Build system prompt, adding Cosmos constraints if needed.
+        """Build system prompt using the centralized prompt builder.
 
         Returns:
-            Formatted system prompt with schema context and date.
+            Formatted system prompt with all components.
         """
         schema_context = self._get_schema_context()
         few_shot = SchemaFormatter.format_few_shot_examples(self._config)
-        base_prompt = self._config.system_prompt or DEFAULT_SQL_PROMPT
 
-        formatted = base_prompt.format(
+        # Get partition key for Cosmos if applicable
+        partition_key = None
+        if self._is_cosmos and self._config.datasource:
+            partition_key = getattr(
+                self._config.datasource, "partition_key_path", "/id"
+            )
+
+        return build_prompt(
+            datasource_type=self._dialect,
+            user_prompt=self._config.system_prompt,
             schema_context=schema_context,
             few_shot_examples=few_shot,
+            partition_key=partition_key,
         )
-
-        # Add Cosmos-specific constraints
-        if self._is_cosmos:
-            partition_key = "/id"
-            if self._config.datasource:
-                partition_key = getattr(
-                    self._config.datasource, "partition_key_path", "/id"
-                )
-            formatted += COSMOS_PROMPT_ADDENDUM.format(partition_key=partition_key)
-
-        return build_date_context() + formatted
 
     async def generate_sql(self, state: "AgentState") -> dict[str, Any]:
         """Generate query from natural language question.

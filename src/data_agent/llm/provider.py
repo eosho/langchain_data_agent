@@ -35,10 +35,17 @@ class AzureOpenAIProvider(BaseProvider):
         Returns:
             Configured AzureChatOpenAI instance.
         """
-        return AzureChatOpenAI(
-            azure_endpoint=kwargs.get("azure_endpoint"),
-            api_key=kwargs.get("api_key"),
-            azure_deployment=kwargs.get("deployment_name"),
-            api_version=kwargs.get("api_version", "2024-08-01-preview"),
-            temperature=kwargs.get("temperature", 0),
-        )
+        # Build kwargs dict, only including non-None values to allow env var fallback
+        llm_kwargs: dict[str, Any] = {
+            "api_version": kwargs.get("api_version", "2024-08-01-preview"),
+            "temperature": kwargs.get("temperature", 0),
+        }
+
+        if kwargs.get("azure_endpoint"):
+            llm_kwargs["azure_endpoint"] = kwargs["azure_endpoint"]
+        if kwargs.get("api_key"):
+            llm_kwargs["api_key"] = kwargs["api_key"]
+        if kwargs.get("deployment_name"):
+            llm_kwargs["azure_deployment"] = kwargs["deployment_name"]
+
+        return AzureChatOpenAI(**llm_kwargs)

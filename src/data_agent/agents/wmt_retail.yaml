@@ -1,0 +1,1009 @@
+data_agents:
+  - name: wmt_retail_sales
+    description: Walmart US retail point-of-sale transactions, items, stores, channels, and financial data
+    datasource:
+      type: bigquery
+      project_id: wmt-edw-prod
+      dataset: US_FIN_SALES_DL_RPT_VM
+      location: US
+    llm:
+      model: gpt-5-mini
+      provider: azure_openai
+      api_version: 2024-12-01-preview
+      temperature: 1.0
+      max_tokens: 2000
+    validation:
+      max_rows: 5000
+      blocked_functions:
+        - session_user
+        - external_query
+    system_prompt: |
+      You are an expert SQL assistant for a Walmart US retail point-of-sale database running on Google BigQuery.
+
+      ## Your Role
+
+      Generate accurate, efficient BigQuery SQL queries based on natural language questions. You have access to comprehensive retail transaction data including stores, items, channels, fulfillment, and financial hierarchies.
+
+      ## Database Context
+
+      {schema_context}
+
+      ## Examples
+
+      {few_shot_examples}
+
+      ## Key Business Concepts
+
+      ### Transaction Identifiers
+      - **VISIT_NBR**: 29-character unique identifier for B&M register transactions (format: void_flag + country + store + register + transaction + datetime)
+      - **ORDER_NBR**: Walmart.com order number for online-initiated sales
+
+      ### Sales Channels
+      - **CHNL_TYPE_ID**: High-level channel (1=Store Sale, 30=Layaway, 86=Online Initiated)
+      - **FULFMT_TYPE_ID**: Fulfillment method (6=Scheduled Pickup, 7=Scheduled Delivery, etc.)
+      - **CHNL_CONS_HIER_LVL_***: Channel consumption hierarchy for reporting
+
+      ### Item Hierarchy (Walmart)
+      Department → Category Group → Category → Subcategory → Fineline
+
+      ### Financial Hierarchy
+      FIN_GROUP → FIN_SEG → FIN_SUBGROUP → FIN_PORTF
+
+      ### Store Classifications
+      - **COMP_CD**: Comparable store indicator (C=Comparable, L/T=New, S/E=Expansion, M/R=Relocation)
+      - **BANNER_CD**: Store banner (A1=Supercenter, etc.)
+      - **STORE_TYPE_CD**: Physical building type
+
+      ### Fiscal Calendar
+      - Walmart fiscal year starts in February
+      - **WM_YR_WK_NBR**: YYYYWW format fiscal year-week
+      - **FISCAL_MTH_NBR**: 1=February through 12=January
+
+      ## Data Asset Information
+
+      ### Timeframe & Timeliness
+      - **Historical Data**: VISIT_LOCAL_DT from 2017-01-01 to current
+      - **Data Refresh**: Updates daily with yesterday's data by 6:00 AM CDT
+      - **Table Grain**: Store/Day/Register/Transaction/Item level
+
+      ### Data Quality
+      - Quality variance: Less than +/- 1 basis point to SAP per month at Walmart segment level
+      - Completeness validations ensure data equals source and all Data Lake layers are consistent
+      - Primary source: CTH (Customer Transaction History)
+
+      ### Data Metrics Available
+      - Retail Sales & Returns (SALES_AMT)
+      - Unit Quantity (UOM_QTY, OPS_UNIT_QTY)
+      - Associate Discount (ASSOC_DISC_AMT)
+
+      ### SAP Alignment Rules (CRITICAL)
+      - **OTHER_INCOME_IND = 0**: Aligns to GL accounts 4101010 + 4101030 + 4102001 (Parent IDs: FN105 + BRUS975)
+      - **OTHER_INCOME_IND = 1**: Revenue from items posting to other GL accounts via FN105
+      - **For top-line merchandise sales only**: Use `OTHER_INCOME_IND = 0 AND VENDOR_NBR != 481890`
+        - Note: Bottle deposit revenue (state-imposed) is flagged OII=0 because it posts to 4101010, exclude via VENDOR_NBR filter if needed
+
+      ## Response Format
+
+      Provide your response as JSON with these fields:
+      - "thinking": Step-by-step reasoning about how to construct the query
+      - "sql_query": The generated BigQuery SQL query
+      - "explanation": Brief explanation of what the query does
+      - "visualization_requested": Set to true if the user is asking for a chart, graph, plot, or any visual representation
+
+    response_prompt: |
+      You are a helpful retail analyst for Walmart US sales data.
+
+      Given the user's question, the SQL query that was executed, and the results,
+      provide a clear and concise natural language response.
+
+      Be conversational but precise. Include relevant numbers, percentages, and insights.
+      Format currency values with $ and commas. Format large numbers for readability.
+      When discussing sales performance, provide context about comparable stores, channels, and time periods.
+      If the results are empty, explain what that means in context.
+
+      ## Data Presentation
+
+      When the query returns tabular data (multiple rows/columns), ALWAYS include a formatted markdown table showing the results.
+      - Use proper markdown table syntax with headers
+      - Align numeric columns to the right
+      - Format currency with $ and commas (e.g., $1,234.56)
+      - Format dates in readable format (e.g., Jun 21, 2025)
+      - Limit tables to 20 rows max; if more rows exist, show first 20 and note "... and X more rows"
+      - After the table, provide a brief summary or insight about the data
+
+    table_schemas:
+      - table_name: WMT_STORE_SALES_DTL_D
+        table_description: Point-of-sale item-level transaction data for Walmart US stores including online-initiated store-fulfilled orders.
+        columns:
+          # Transaction Identifiers
+          - column_name: STORE_NBR
+            data_type: INT64
+            description: "Store Number - Unique numeric identifier for retail locations, DCs, Home Office departments"
+          - column_name: VISIT_NBR
+            data_type: STRING
+            description: "Visit Number - 29-character unique identifier for B&M register transactions. Format: void(1) + country(2) + store(5) + register(3) + transaction(4) + datetime(14)"
+          - column_name: SCAN_ID
+            data_type: INT64
+            description: "Scan ID - Company-assigned number for each item sold. Interpretation varies by SCAN_TYPE"
+          - column_name: SCAN_TYPE
+            data_type: INT64
+            description: "Scan Type - Item type indicator: 0=Corporate Item, 1=Dept Hand-Keyed, 2=Local Store Item, 3=Rx, 4=Old Number, -999=Unknown"
+          - column_name: SCAN_TYPE_DESC
+            data_type: STRING
+            description: "Scan Type Description"
+          - column_name: SEQ_LINE_NBR
+            data_type: INT64
+            description: "Sequence Line Number - Position of item in register transaction or eComm order"
+
+          # Channel & Fulfillment
+          - column_name: CHNL_TYPE_ID
+            data_type: INT64
+            description: "Channel Type ID - 1=Store Sale, 30=Layaway, 86=Online Initiated Sale"
+          - column_name: CHNL_TYPE_DESC
+            data_type: STRING
+            description: "Channel Type Description"
+          - column_name: CHNL_SUBTYPE_ID
+            data_type: INT64
+            description: "Channel Subtype ID - Granular channel code (VISIT_SUBTYPE_CD for B&M, SVC_ID for eComm)"
+          - column_name: CHNL_SUBTYPE_DESC
+            data_type: STRING
+            description: "Channel Subtype Description"
+          - column_name: FULFMT_TYPE_ID
+            data_type: INT64
+            description: "Fulfillment Type ID - 1=Site to Home, 6=Scheduled Pickup, 7=Scheduled Delivery, 8=Express Pickup, 9=Express Delivery, 16=Store"
+          - column_name: FULFMT_TYPE_DESC
+            data_type: STRING
+            description: "Fulfillment Type Description"
+          - column_name: ORDER_NBR
+            data_type: STRING
+            description: "Walmart.com order number for online-initiated store-fulfilled sales"
+          - column_name: CHNL_ACTV_GRP_NBR
+            data_type: INT64
+            description: "Channel Activity Group Number for business channel identification"
+          - column_name: CHNL_ACTV_GRP_DESC
+            data_type: STRING
+            description: "Channel Activity Group Description"
+
+          # Channel Consumption Hierarchy
+          - column_name: CHNL_CONS_HIER_LVL_0_DESC
+            data_type: STRING
+            description: "Channel Hierarchy Level 0 - Total Channel Consumption"
+          - column_name: CHNL_CONS_HIER_LVL_1_DESC
+            data_type: STRING
+            description: "Channel Hierarchy Level 1"
+          - column_name: CHNL_CONS_HIER_LVL_2_DESC
+            data_type: STRING
+            description: "Channel Hierarchy Level 2"
+          - column_name: CHNL_CONS_HIER_LVL_3_DESC
+            data_type: STRING
+            description: "Channel Hierarchy Level 3"
+          - column_name: CHNL_CONS_HIER_LVL_4_DESC
+            data_type: STRING
+            description: "Channel Hierarchy Level 4"
+          - column_name: CHNL_BASE_DESC
+            data_type: STRING
+            description: "Channel Base Description"
+          - column_name: SRC_OF_ORIGN_CD
+            data_type: STRING
+            description: "Source of Origin Code"
+
+          # Sales Metrics
+          - column_name: SALES_AMT
+            data_type: NUMERIC
+            description: "Sales Amount - Retail amount charged or refunded"
+          - column_name: UNIT_COST_AMT
+            data_type: NUMERIC
+            description: "Unit Cost Amount - Synthetic cost metric (multiply by UOM_QTY for total cost)"
+          - column_name: UOM_QTY
+            data_type: NUMERIC
+            description: "Unit of Measure Quantity - Packages sold (or pounds/yards for variable-priced items)"
+          - column_name: SCAN_CNT
+            data_type: INT64
+            description: "Scan Count - Number of items physically scanned"
+          - column_name: OPS_UNIT_QTY
+            data_type: NUMERIC
+            description: "Operations Unit Quantity - Business-defined package count metric for all items"
+          - column_name: ASSOC_DISC_AMT
+            data_type: NUMERIC
+            description: "Associate Discount Amount"
+          - column_name: SVC_VAL_AMT
+            data_type: NUMERIC
+            description: "Services Value Amount - Company service income (auto services, warranty, financial services)"
+          - column_name: PRC_OVERRIDEN_AMT
+            data_type: NUMERIC
+            description: "Price Overridden Amount - Original unit price before override"
+
+          # Report & Pricing Codes
+          - column_name: RPT_CD
+            data_type: STRING
+            description: "Report Code - Sell status: 0=Regular, 1=Store Tab, 2=Company Tab, 7=Rollback, 8=Clearance"
+          - column_name: RPT_CD_DESC
+            data_type: STRING
+            description: "Report Code Description"
+
+          # Transaction Indicators
+          - column_name: RTN_ITEM_IND
+            data_type: INT64
+            description: "Return Item Indicator - 1 if item was returned"
+          - column_name: EXCHANGE_ITEM_IND
+            data_type: INT64
+            description: "Exchange Item Indicator - 1 if even exchange for returned item"
+          - column_name: VOID_ITEM_IND
+            data_type: INT64
+            description: "Void Item Indicator - 1 on void records (negative SALES_AMT)"
+          - column_name: VOID_CMPLT_TRANS_IND
+            data_type: INT64
+            description: "Void Complete Transaction Indicator - 1 if entire transaction voided after completion"
+          - column_name: OTHER_INCOME_IND
+            data_type: INT64
+            description: "Other Income Indicator - 1 if item routes to non-sales GL accounts"
+          - column_name: SELF_CHKOUT_IND
+            data_type: INT64
+            description: "Self Checkout Indicator - 1 if sold on self-checkout register"
+          - column_name: FUEL_CONV_STORE_IND
+            data_type: INT64
+            description: "Fuel Convenience Store Indicator - 1 if store has company-owned gas station"
+          - column_name: DSV_IND
+            data_type: INT64
+            description: "Drop Ship Vendor Indicator - 1 if shipped directly from vendor"
+          - column_name: INSTACART_IND
+            data_type: INT64
+            description: "Instacart Indicator - 1 if purchased by Instacart shopper"
+
+          # Item Identifiers
+          - column_name: MDS_FAM_ID
+            data_type: INT64
+            description: "Merchandise Family ID - Unique corporate item identifier"
+          - column_name: UPC_SRC_NBR
+            data_type: NUMERIC
+            description: "UPC Number from source"
+          - column_name: UPC_DESC
+            data_type: STRING
+            description: "UPC Description - 12-character receipt description"
+          - column_name: ITEM_NBR
+            data_type: INT64
+            description: "Item Number - Vendor-specific company-assigned number"
+          - column_name: ITEM_DESC_1
+            data_type: STRING
+            description: "Item Description 1 - Primary item description"
+          - column_name: ITEM_DESC_2
+            data_type: STRING
+            description: "Item Description 2 - Secondary item description"
+          - column_name: ITEM_STATUS_CD
+            data_type: STRING
+            description: "Item Status Code - A=Active, I=Inactive, D=Delete"
+          - column_name: SIGNING_DESC
+            data_type: STRING
+            description: "Signing Description - Shelf sign description"
+          - column_name: UOM_CD
+            data_type: STRING
+            description: "Unit of Measure Code - EA, LB, YD, etc."
+
+          # Item Hierarchy (Walmart)
+          - column_name: DEPT_NBR
+            data_type: INT64
+            description: "Department Number - Merchandising department"
+          - column_name: DEPT_DESC
+            data_type: STRING
+            description: "Department Description"
+          - column_name: ACCTG_DEPT_NBR
+            data_type: INT64
+            description: "Accounting Department Number - SAP posting department"
+          - column_name: ACCTG_DEPT_DESC
+            data_type: STRING
+            description: "Accounting Department Description"
+          - column_name: DEPT_CATG_GRP_NBR
+            data_type: INT64
+            description: "Department Category Group Number"
+          - column_name: DEPT_CATG_GRP_DESC
+            data_type: STRING
+            description: "Department Category Group Description"
+          - column_name: DEPT_CATG_NBR
+            data_type: INT64
+            description: "Department Category Number"
+          - column_name: DEPT_CATG_DESC
+            data_type: STRING
+            description: "Department Category Description"
+          - column_name: DEPT_SUBCATG_NBR
+            data_type: INT64
+            description: "Department Subcategory Number"
+          - column_name: DEPT_SUBCATG_DESC
+            data_type: STRING
+            description: "Department Subcategory Description"
+          - column_name: FINELINE_NBR
+            data_type: INT64
+            description: "Fineline Number - Lowest hierarchy level for Walmart"
+          - column_name: FINELINE_DESC
+            data_type: STRING
+            description: "Fineline Description"
+          - column_name: SUBCLASS_NBR
+            data_type: INT64
+            description: "Subclass Number - Sam's hierarchy (not used for Walmart)"
+          - column_name: SUBCLASS_DESC
+            data_type: STRING
+            description: "Subclass Description"
+
+          # Financial Hierarchy
+          - column_name: FIN_GROUP_NBR
+            data_type: INT64
+            description: "Finance Group Number"
+          - column_name: FIN_GROUP_DESC
+            data_type: STRING
+            description: "Finance Group Description"
+          - column_name: FIN_SEG_NBR
+            data_type: INT64
+            description: "Finance Segment Number (SBU)"
+          - column_name: FIN_SEG_DESC
+            data_type: STRING
+            description: "Finance Segment Description"
+          - column_name: FIN_SUBGROUP_NBR
+            data_type: INT64
+            description: "Finance Subgroup Number"
+          - column_name: FIN_SUBGROUP_DESC
+            data_type: STRING
+            description: "Finance Subgroup Description"
+          - column_name: FIN_PORTF_NBR
+            data_type: INT64
+            description: "Finance Portfolio Number"
+          - column_name: FIN_PORTF_DESC
+            data_type: STRING
+            description: "Finance Portfolio Description"
+          - column_name: GL_ACCT_ALGN_NBR
+            data_type: INT64
+            description: "GL Account Aligned Number - SAP GL account alignment"
+          - column_name: GL_ACCT_ALGN_NM
+            data_type: STRING
+            description: "GL Account Aligned Name"
+
+          # Brand & Vendor
+          - column_name: BRAND_ID
+            data_type: INT64
+            description: "Brand ID"
+          - column_name: BRAND_NM
+            data_type: STRING
+            description: "Brand Name"
+          - column_name: BRAND_OWNR_ID
+            data_type: INT64
+            description: "Brand Owner ID"
+          - column_name: BRAND_OWNR_NM
+            data_type: STRING
+            description: "Brand Owner Name"
+          - column_name: VENDOR_NBR
+            data_type: INT64
+            description: "Vendor Number"
+          - column_name: VENDOR_NM
+            data_type: STRING
+            description: "Vendor Name"
+
+          # Store Attributes
+          - column_name: STORE_NM
+            data_type: STRING
+            description: "Store Name"
+          - column_name: BANNER_CD
+            data_type: STRING
+            description: "Banner Code - A1=Supercenter, etc."
+          - column_name: BANNER_DESC
+            data_type: STRING
+            description: "Banner Description"
+          - column_name: STORE_TYPE_CD
+            data_type: STRING
+            description: "Store Type Code - R=Regular, U=Supercenter/NHM, S=Sam's"
+          - column_name: STORE_TYPE_DESC
+            data_type: STRING
+            description: "Store Type Description"
+          - column_name: STORE_SIZE_SQFT
+            data_type: INT64
+            description: "Store Size in Square Feet"
+          - column_name: GRAND_OPEN_DT
+            data_type: DATE
+            description: "Grand Open Date"
+          - column_name: EXPND_OPEN_DT
+            data_type: DATE
+            description: "Expansion/Relocation Open Date"
+          - column_name: OPEN_STATUS_CD
+            data_type: STRING
+            description: "Open Status Code - 0=Scheduled, 1=New<13mo, 2=Open>13mo, 7=Closed"
+          - column_name: OPEN_STATUS_DESC
+            data_type: STRING
+            description: "Open Status Description"
+
+          # Comparable Store
+          - column_name: COMP_CD
+            data_type: STRING
+            description: "Comparable Code - C=Comparable, L/T=New, S/E=Expansion, M/R=Relocation, N/X=Closed"
+          - column_name: COMP_DESC
+            data_type: STRING
+            description: "Comparable Description"
+
+          # Geographic Hierarchy
+          - column_name: STATE_PROV_CD
+            data_type: STRING
+            description: "State/Province Code"
+          - column_name: POSTAL_CD
+            data_type: STRING
+            description: "Postal Code (5 digits, zero-padded)"
+          - column_name: LAT_DGR
+            data_type: NUMERIC
+            description: "Latitude Degrees"
+          - column_name: LONG_DGR
+            data_type: NUMERIC
+            description: "Longitude Degrees"
+          - column_name: TZ_CD
+            data_type: STRING
+            description: "Timezone Code - EST, CST, MST, PST, etc."
+          - column_name: MARKET_NBR
+            data_type: INT64
+            description: "Market Number"
+          - column_name: MARKET_NM
+            data_type: STRING
+            description: "Market Name"
+          - column_name: REGION_NBR
+            data_type: INT64
+            description: "Region Number"
+          - column_name: REGION_NM
+            data_type: STRING
+            description: "Region Name"
+          - column_name: SUBDIV_NBR
+            data_type: STRING
+            description: "Subdivision Number"
+          - column_name: SUBDIV_NM
+            data_type: STRING
+            description: "Subdivision Name"
+          - column_name: BUO_AREA_NBR
+            data_type: INT64
+            description: "Business Unit Area Number"
+          - column_name: BUO_AREA_NM
+            data_type: STRING
+            description: "Business Unit Area Name"
+          - column_name: MDSE_MAJ_ZONE_NBR
+            data_type: INT64
+            description: "Merchandise Major Zone Number"
+          - column_name: MDSE_SUB_ZONE_NBR
+            data_type: INT64
+            description: "Merchandise Sub Zone Number"
+
+          # Price Investment
+          - column_name: PRICE_INVST_IND
+            data_type: INT64
+            description: "Price Investment Indicator"
+          - column_name: PRICE_INVST_COMP_IND
+            data_type: INT64
+            description: "Price Investment Comparable Indicator"
+          - column_name: PRICE_INVST_START_DT
+            data_type: DATE
+            description: "Price Investment Start Date"
+          - column_name: PRICE_INVST_WAVE_DESC
+            data_type: STRING
+            description: "Price Investment Wave Description"
+
+          # Fiscal Calendar
+          - column_name: POSTG_DT
+            data_type: DATE
+            description: "Posting Date - Financial business date"
+          - column_name: VISIT_LOCAL_DT
+            data_type: DATE
+            description: "Visit Local Date - Store local date from POS"
+          - column_name: VISIT_LOCAL_TM
+            data_type: STRING
+            description: "Visit Local Time - Store local time (hh:mm:ss)"
+          - column_name: VISIT_UTC_DT
+            data_type: DATE
+            description: "Visit UTC Date"
+          - column_name: VISIT_UTC_TM
+            data_type: STRING
+            description: "Visit UTC Time"
+          - column_name: FISCAL_FULL_YR_NBR
+            data_type: INT64
+            description: "Fiscal Full Year Number"
+          - column_name: FISCAL_MTH_NBR
+            data_type: INT64
+            description: "Fiscal Month Number (1=Feb, 12=Jan)"
+          - column_name: FISCAL_MTH_ABBR
+            data_type: STRING
+            description: "Fiscal Month Abbreviation"
+          - column_name: FISCAL_QTR_NBR
+            data_type: INT64
+            description: "Fiscal Quarter Number"
+          - column_name: WM_FULL_YR_NBR
+            data_type: INT64
+            description: "Walmart Full Year Number"
+          - column_name: WM_MTH_NBR
+            data_type: INT64
+            description: "Walmart Month Number"
+          - column_name: WM_MTH_ABBR
+            data_type: STRING
+            description: "Walmart Month Abbreviation"
+          - column_name: WM_QTR_NBR
+            data_type: INT64
+            description: "Walmart Quarter Number"
+          - column_name: WM_WK_NBR
+            data_type: INT64
+            description: "Walmart Week Number"
+          - column_name: WM_YR_WK_NBR
+            data_type: INT64
+            description: "Walmart Year Week Number (YYYYWW)"
+          - column_name: WM_WK_DAY_NBR
+            data_type: INT64
+            description: "Walmart Weekday Number (1=Sat, 7=Fri)"
+          - column_name: CAL_WK_DAY_ABBR
+            data_type: STRING
+            description: "Calendar Week Day Abbreviation"
+
+          # Item Seasonal
+          - column_name: SEASN_CD
+            data_type: INT64
+            description: "Season Code - 0=Basic, 1=Spring, 2=Summer, 3=BTS/Fall, 4=Winter"
+          - column_name: SEASN_DESC
+            data_type: STRING
+            description: "Season Description"
+          - column_name: SEASN_YR
+            data_type: INT64
+            description: "Season Year"
+
+          # Item Linkage
+          - column_name: ALL_LINKS_ITEM_NBR
+            data_type: INT64
+            description: "All Links Item Number - Prime item at top of linkage chains"
+          - column_name: ALL_LINKS_MDSE_FAM_ID
+            data_type: INT64
+            description: "All Links Merchandise Family ID"
+          - column_name: REPL_GROUP_NBR
+            data_type: NUMERIC
+            description: "Replenishment Group Number"
+
+          # Distribution Center
+          - column_name: PRMRY_DC_NBR
+            data_type: INT64
+            description: "Primary Distribution Center Number"
+          - column_name: UPSTRM_DC_NBR
+            data_type: INT64
+            description: "Upstream Distribution Center Number"
+          - column_name: WHSE_ALGN_TYPE_CD
+            data_type: STRING
+            description: "Warehouse Align Type Code"
+          - column_name: POS_DEPT_NBR
+            data_type: INT64
+            description: "POS Department Number"
+          - column_name: BUYG_REGION_CD
+            data_type: INT64
+            description: "Buying Region Code - 1=Alaska, 2=Hawaii, 3=Puerto Rico"
+          - column_name: BUYG_REGION_DESC
+            data_type: STRING
+            description: "Buying Region Description"
+
+          # Register Details
+          - column_name: REG_NBR
+            data_type: INT64
+            description: "Register Number"
+          - column_name: TRANS_NBR
+            data_type: INT64
+            description: "Transaction Number"
+          - column_name: OPERATOR_NBR
+            data_type: INT64
+            description: "Operator Number"
+
+          # Return Details
+          - column_name: RTN_RSN_CD
+            data_type: INT64
+            description: "Return Reason Code - 0=Unknown, 1=Doesn't Work, 2=Damaged, 3=Incorrect, 4=Poor Quality, 5=Changed Mind"
+          - column_name: RTN_RSN_DESC
+            data_type: STRING
+            description: "Return Reason Description"
+          - column_name: RCPT_SEQ_NBR
+            data_type: INT64
+            description: "Receipt Sequence Number for returns"
+          - column_name: DEFECTIVE_ITEM_IND
+            data_type: INT64
+            description: "Defective Item Indicator"
+
+          # Tax Indicators
+          - column_name: TAX_XMPT_IND
+            data_type: INT64
+            description: "Tax Exempt Indicator"
+          - column_name: TAX_XMPT_TYPE_DESC
+            data_type: STRING
+            description: "Tax Exempt Type Description"
+          - column_name: TAX_1_IND
+            data_type: INT64
+            description: "Tax 1 Indicator"
+          - column_name: TAX_2_IND
+            data_type: INT64
+            description: "Tax 2 Indicator"
+          - column_name: FOODSTAMP_ELIGIBLE_IND
+            data_type: INT64
+            description: "Foodstamp/SNAP Eligible Indicator"
+
+          # WIC (Women, Infants, Children)
+          - column_name: WIC_CATG_NBR
+            data_type: INT64
+            description: "WIC Category Number"
+          - column_name: WIC_SUBCATG_NBR
+            data_type: INT64
+            description: "WIC Subcategory Number"
+          - column_name: WIC_REDEEMED_IND
+            data_type: INT64
+            description: "WIC Redeemed Indicator"
+          - column_name: WIC_PARTIAL_REDEEM_IND
+            data_type: INT64
+            description: "WIC Partial Redemption Indicator"
+
+          # Price Override Indicators
+          - column_name: PRICE_OVERRIDE_IND
+            data_type: INT64
+            description: "Price Override Indicator"
+          - column_name: CSC_CUST_SATISFY_IND
+            data_type: INT64
+            description: "CSC Customer Satisfaction Indicator"
+          - column_name: MUMD1_PRICE_ERROR_IND
+            data_type: INT64
+            description: "Price Error Indicator"
+          - column_name: MUMD2_COMP_AD_IND
+            data_type: INT64
+            description: "Comp Ad Indicator"
+          - column_name: MUMD3_BATTERY_IND
+            data_type: INT64
+            description: "Battery Exchange Indicator"
+          - column_name: MUMD4_MISC_IND
+            data_type: INT64
+            description: "Miscellaneous Override Indicator"
+          - column_name: DSIM_IND
+            data_type: INT64
+            description: "Dynamic Store Initiated Markdown Indicator"
+
+          # Item Scan Indicators
+          - column_name: NOT_ON_FILE_IND
+            data_type: INT64
+            description: "Not On File Indicator"
+          - column_name: KEYED_ITEM_IND
+            data_type: INT64
+            description: "Keyed Item Indicator"
+          - column_name: QTY_ENTERED_IND
+            data_type: INT64
+            description: "Quantity Entered Indicator"
+          - column_name: MEASURE_ITEM_IND
+            data_type: INT64
+            description: "Measured Item Indicator"
+          - column_name: EMBEDDED_PRICE_IND
+            data_type: INT64
+            description: "Embedded Price Indicator"
+          - column_name: VAR_WT_IND
+            data_type: INT64
+            description: "Variable Weight Indicator"
+
+          # eComm Order Details
+          - column_name: ORDER_LINE_NBR
+            data_type: INT64
+            description: "Walmart.com Order Line Number"
+          - column_name: PG_CUST_ID
+            data_type: STRING
+            description: "Pangaea Customer ID for online sales"
+
+          # Source & Operational
+          - column_name: SRC_TYPE_NM
+            data_type: STRING
+            description: "Source Type Name - STORE, STORE-ONLINE-INIT, ECOMMERCE"
+          - column_name: OP_CMPNY_CD
+            data_type: STRING
+            description: "Operational Company Code - WMT-US, SAMS-US, etc."
+          - column_name: FIN_RPT_CD
+            data_type: STRING
+            description: "Financial Report Code"
+          - column_name: FIN_RPT_DESC
+            data_type: STRING
+            description: "Financial Report Description"
+          - column_name: PICKER_TYPE_NM
+            data_type: STRING
+            description: "Picker Type Name for last-mile delivery"
+          - column_name: CUST_ACCT_TYPE_NM
+            data_type: STRING
+            description: "Customer Account Type Name (B2B, etc.)"
+          - column_name: SVC_TYPE_CD
+            data_type: STRING
+            description: "Service Type Code"
+
+          # Surrogate Keys
+          - column_name: CAL_KEY
+            data_type: INT64
+            description: "Calendar Dimension Key"
+          - column_name: ITEM_KEY
+            data_type: INT64
+            description: "Item Dimension Key"
+          - column_name: ITEM_CURR_KEY
+            data_type: INT64
+            description: "Item Current Dimension Key"
+          - column_name: STORE_KEY
+            data_type: INT64
+            description: "Store Dimension Key"
+          - column_name: STORE_CURR_KEY
+            data_type: INT64
+            description: "Store Current Dimension Key"
+          - column_name: FIN_DEPT_KEY
+            data_type: INT64
+            description: "Financial Department Key"
+          - column_name: FIN_CURR_DEPT_KEY
+            data_type: INT64
+            description: "Financial Current Department Key"
+          - column_name: DC_ALGN_KEY
+            data_type: INT64
+            description: "DC Alignment Key"
+          - column_name: COMP_KEY
+            data_type: INT64
+            description: "Comp Status Dimension Key"
+          - column_name: STORE_DAY_KEY
+            data_type: INT64
+            description: "Store Day Key"
+          - column_name: CHNL_KEY
+            data_type: INT64
+            description: "Channel Key"
+          - column_name: CHNL_BASE_ID
+            data_type: INT64
+            description: "Channel Base ID"
+          - column_name: REG_TYPE_KEY
+            data_type: INT64
+            description: "Register Type Key - 1=Regular, 2=Fuel, 3=SCO, 4=Fuel+SCO"
+
+          # Timestamps
+          - column_name: LOAD_TS
+            data_type: TIMESTAMP
+            description: "Load Timestamp"
+          - column_name: UPD_TS
+            data_type: TIMESTAMP
+            description: "Updated Timestamp"
+
+    few_shot_examples:
+      - question: Show me all line items for a specific register transaction
+        answer: |
+          This query retrieves all item-level details for a single register transaction. Note that some items like gift cards may have multiple records due to separate GL account postings (e.g., Starbucks gift card splits between 3rd party settlement and commission income). Associate discounts are shown at the item level.
+        sql_query: |
+          SELECT
+            STORE_NBR,
+            VISIT_LOCAL_DT,
+            VISIT_LOCAL_TM,
+            VISIT_NBR,
+            REG_NBR,
+            TRANS_NBR,
+            SEQ_LINE_NBR,
+            ACCTG_DEPT_NBR,
+            UPC_DESC,
+            UPC_SRC_NBR,
+            ITEM_DESC_1,
+            OTHER_INCOME_IND,
+            GL_ACCT_ALGN_NBR,
+            GL_ACCT_ALGN_NM,
+            UOM_QTY,
+            ASSOC_DISC_AMT,
+            SALES_AMT
+          FROM `wmt-edw-prod.US_FIN_SALES_DL_RPT_VM.WMT_STORE_SALES_DTL_D`
+          WHERE VISIT_LOCAL_DT = '2025-01-31'  -- Data partitioned on this column
+            AND STORE_NBR = 5260
+            AND REG_NBR = 3
+            AND TRANS_NBR = 3963
+          ORDER BY STORE_NBR, VISIT_LOCAL_DT, REG_NBR, TRANS_NBR, SEQ_LINE_NBR
+
+      - question: Compare store sales vs online-initiated store-fulfilled (OISF) sales
+        answer: |
+          This query compares traditional in-store sales (BIS - Brick & Mortar In-Store) versus online-initiated store-fulfilled (OISF) sales like pickup and delivery.
+          The SRC_TYPE_NM column distinguishes between STORE (pure in-store) and STORE-ONLINE-INIT (online orders fulfilled by stores).
+        sql_query: |
+          SELECT
+            CAST(FORMAT_TIMESTAMP('%Y%m', VISIT_LOCAL_DT) AS INT64) AS CAL_YR_MO,
+            SRC_TYPE_NM,
+            ROUND(SUM(SALES_AMT), 0) AS SALES_AMT
+          FROM `wmt-edw-prod.US_FIN_SALES_DL_RPT_VM.WMT_STORE_SALES_DTL_D`
+          WHERE VISIT_LOCAL_DT BETWEEN '2025-01-01' AND '2025-01-31'  -- Data partitioned on this column
+            AND OTHER_INCOME_IND = 0  -- Returns just top-line merchandise sales
+          GROUP BY ALL
+          ORDER BY CAL_YR_MO, SRC_TYPE_NM
+
+      - question: Show me hourly sales distribution for a store
+        answer: |
+          This query analyzes sales by hour of day for a specific store. Useful for staffing optimization, understanding peak shopping times, and identifying overnight activity patterns. Hours are in 24-hour format based on store local time.
+        sql_query: |
+          SELECT
+            X.STORE_NBR,
+            X.CAL_YR_MO,
+            X.VISIT_LOCAL_HR_NBR,
+            ROUND(SUM(X.SALES_AMT), 0) AS SALES_AMT
+          FROM (
+            SELECT
+              STORE_NBR,
+              CAST(FORMAT_TIMESTAMP('%Y%m', VISIT_LOCAL_DT) AS INT64) AS CAL_YR_MO,
+              SUBSTRING(VISIT_LOCAL_TM, 1, 2) AS VISIT_LOCAL_HR_NBR,
+              SUM(SALES_AMT) AS SALES_AMT
+            FROM `wmt-edw-prod.US_FIN_SALES_DL_RPT_VM.WMT_STORE_SALES_DTL_D`
+            WHERE VISIT_LOCAL_DT BETWEEN '2025-01-01' AND '2025-01-31'  -- Data partitioned on this column
+              AND STORE_NBR = 5260
+              AND OTHER_INCOME_IND = 0  -- Returns just top-line merchandise sales
+            GROUP BY ALL
+          ) AS X
+          GROUP BY ALL
+          ORDER BY X.STORE_NBR, X.CAL_YR_MO, X.VISIT_LOCAL_HR_NBR
+
+      - question: What items are frequently bought together with Sleepwear and Dairy?
+        answer: |
+          This basket analysis query identifies transactions where customers purchased items from both Sleepwear (Dept 29) and Dairy (Dept 90) departments. This pattern analysis helps understand cross-category shopping behavior and can inform store layout and promotional strategies.
+        sql_query: |
+          SELECT
+            A.STORE_NBR,
+            A.VISIT_LOCAL_DT,
+            ROUND(SUM(A.SLEEPWEAR_SALES_AMT), 0) AS SLEEPWEAR_SALES_AMT,
+            ROUND(SUM(B.DAIRY_SALES_AMT), 0) AS DAIRY_SALES_AMT
+          FROM (
+            SELECT
+              STORE_NBR,
+              VISIT_LOCAL_DT,
+              VISIT_NBR,
+              SUM(SALES_AMT) AS SLEEPWEAR_SALES_AMT
+            FROM `wmt-edw-prod.US_FIN_SALES_DL_RPT_VM.WMT_STORE_SALES_DTL_D`
+            WHERE OP_CMPNY_CD = 'WMT-US'
+              AND VISIT_LOCAL_DT BETWEEN '2025-01-01' AND '2025-01-31'  -- Data partitioned on this column
+              AND OTHER_INCOME_IND = 0
+              AND STORE_NBR = 5260
+              AND ACCTG_DEPT_NBR = 29  -- Sleepwear
+            GROUP BY ALL
+            HAVING SLEEPWEAR_SALES_AMT != 0
+          ) AS A
+          INNER JOIN (
+            SELECT
+              STORE_NBR,
+              VISIT_LOCAL_DT,
+              VISIT_NBR,
+              SUM(SALES_AMT) AS DAIRY_SALES_AMT
+            FROM `wmt-edw-prod.US_FIN_SALES_DL_RPT_VM.WMT_STORE_SALES_DTL_D`
+            WHERE OP_CMPNY_CD = 'WMT-US'
+              AND VISIT_LOCAL_DT BETWEEN '2025-01-01' AND '2025-01-31'  -- Data partitioned on this column
+              AND OTHER_INCOME_IND = 0
+              AND STORE_NBR = 5260
+              AND ACCTG_DEPT_NBR = 90  -- Dairy
+            GROUP BY ALL
+            HAVING DAIRY_SALES_AMT != 0
+          ) AS B
+          ON A.VISIT_NBR = B.VISIT_NBR
+          GROUP BY ALL
+          ORDER BY A.STORE_NBR, A.VISIT_LOCAL_DT
+
+      - question: Show sales by GL account for SAP reconciliation
+        answer: |
+          This query summarizes sales by GL account alignment for SAP reconciliation. The GL_ACCT_ALGN_NBR indicates which SAP GL account the sales amount aligns to. Note that VISIT_LOCAL_DT reflects the actual transaction date, which may differ from SAP posting date due to timing differences.
+        sql_query: |
+          SELECT
+            VISIT_LOCAL_DT,
+            GL_ACCT_ALGN_NBR,
+            GL_ACCT_ALGN_NM,
+            ROUND(SUM(SALES_AMT), 0) AS SALES_AMT
+          FROM `wmt-edw-prod.US_FIN_SALES_DL_RPT_VM.WMT_STORE_SALES_DTL_D`
+          WHERE VISIT_LOCAL_DT = '2025-06-23'  -- Data partitioned on this column
+            AND OP_CMPNY_CD = 'WMT-US'
+          GROUP BY VISIT_LOCAL_DT, GL_ACCT_ALGN_NBR, GL_ACCT_ALGN_NM
+          ORDER BY GL_ACCT_ALGN_NBR
+
+      - question: What are total sales by department for last week?
+        answer: This query shows total sales amount and units by department for the last 7 days.
+        sql_query: |
+          SELECT
+            ACCTG_DEPT_NBR,
+            ACCTG_DEPT_DESC,
+            COUNT(DISTINCT VISIT_NBR) AS transaction_count,
+            ROUND(SUM(SALES_AMT), 0) AS total_sales,
+            SUM(UOM_QTY) AS units_sold
+          FROM `wmt-edw-prod.US_FIN_SALES_DL_RPT_VM.WMT_STORE_SALES_DTL_D`
+          WHERE VISIT_LOCAL_DT >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)  -- Data partitioned on this column
+            AND VOID_ITEM_IND = 0
+            AND OTHER_INCOME_IND = 0
+          GROUP BY ACCTG_DEPT_NBR, ACCTG_DEPT_DESC
+          ORDER BY total_sales DESC
+          LIMIT 20
+
+      - question: Show me pickup vs delivery sales breakdown
+        answer: This query compares sales by fulfillment type for online-initiated orders.
+        sql_query: |
+          SELECT
+            FULFMT_TYPE_ID,
+            FULFMT_TYPE_DESC,
+            CHNL_CONS_HIER_LVL_3_DESC AS channel_level_3,
+            COUNT(DISTINCT ORDER_NBR) AS order_count,
+            ROUND(SUM(SALES_AMT), 0) AS total_sales,
+            SUM(OPS_UNIT_QTY) AS units_sold,
+            ROUND(SUM(SALES_AMT) / NULLIF(COUNT(DISTINCT ORDER_NBR), 0), 2) AS avg_order_value
+          FROM `wmt-edw-prod.US_FIN_SALES_DL_RPT_VM.WMT_STORE_SALES_DTL_D`
+          WHERE SRC_TYPE_NM = 'STORE-ONLINE-INIT'
+            AND VISIT_LOCAL_DT >= DATE_TRUNC(CURRENT_DATE(), MONTH)  -- Data partitioned on this column
+            AND VOID_ITEM_IND = 0
+          GROUP BY FULFMT_TYPE_ID, FULFMT_TYPE_DESC, CHNL_CONS_HIER_LVL_3_DESC
+          ORDER BY total_sales DESC
+
+      - question: Show comparable store sales by region
+        answer: This query shows sales for comparable stores (COMP_CD = 'C') grouped by region.
+        sql_query: |
+          SELECT
+            REGION_NBR,
+            REGION_NM,
+            COUNT(DISTINCT STORE_NBR) AS comp_store_count,
+            ROUND(SUM(SALES_AMT), 0) AS total_sales,
+            SUM(OPS_UNIT_QTY) AS total_units,
+            ROUND(SUM(SALES_AMT) / NULLIF(COUNT(DISTINCT STORE_NBR), 0), 2) AS avg_store_sales
+          FROM `wmt-edw-prod.US_FIN_SALES_DL_RPT_VM.WMT_STORE_SALES_DTL_D`
+          WHERE COMP_CD = 'C'  -- Comparable stores only
+            AND VISIT_LOCAL_DT >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)  -- Data partitioned on this column
+            AND VOID_ITEM_IND = 0
+            AND OTHER_INCOME_IND = 0
+          GROUP BY REGION_NBR, REGION_NM
+          ORDER BY total_sales DESC
+
+      - question: What is the return rate by department?
+        answer: This query calculates return rate (returns as percentage of gross sales) by department.
+        sql_query: |
+          SELECT
+            ACCTG_DEPT_NBR,
+            ACCTG_DEPT_DESC,
+            ROUND(SUM(CASE WHEN RTN_ITEM_IND = 0 THEN SALES_AMT ELSE 0 END), 0) AS gross_sales,
+            ROUND(SUM(CASE WHEN RTN_ITEM_IND = 1 THEN ABS(SALES_AMT) ELSE 0 END), 0) AS return_amount,
+            ROUND(
+              SAFE_DIVIDE(
+                SUM(CASE WHEN RTN_ITEM_IND = 1 THEN ABS(SALES_AMT) ELSE 0 END),
+                SUM(CASE WHEN RTN_ITEM_IND = 0 THEN SALES_AMT ELSE 0 END)
+              ) * 100, 2
+            ) AS return_rate_pct
+          FROM `wmt-edw-prod.US_FIN_SALES_DL_RPT_VM.WMT_STORE_SALES_DTL_D`
+          WHERE VISIT_LOCAL_DT >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)  -- Data partitioned on this column
+            AND VOID_ITEM_IND = 0
+            AND OTHER_INCOME_IND = 0
+          GROUP BY ACCTG_DEPT_NBR, ACCTG_DEPT_DESC
+          HAVING gross_sales > 0
+          ORDER BY return_rate_pct DESC
+
+      - question: Show me self-checkout vs regular checkout sales
+        answer: This query compares sales between self-checkout (SCO) and regular staffed checkout lanes.
+        sql_query: |
+          SELECT
+            CASE
+              WHEN SELF_CHKOUT_IND = 1 THEN 'Self Checkout'
+              ELSE 'Regular Checkout'
+            END AS checkout_type,
+            COUNT(DISTINCT VISIT_NBR) AS transaction_count,
+            ROUND(SUM(SALES_AMT), 0) AS total_sales,
+            ROUND(SUM(SALES_AMT) / NULLIF(COUNT(DISTINCT VISIT_NBR), 0), 2) AS avg_basket_size
+          FROM `wmt-edw-prod.US_FIN_SALES_DL_RPT_VM.WMT_STORE_SALES_DTL_D`
+          WHERE SRC_TYPE_NM = 'STORE'  -- In-store sales only
+            AND VISIT_LOCAL_DT >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)  -- Data partitioned on this column
+            AND VOID_ITEM_IND = 0
+            AND OTHER_INCOME_IND = 0
+          GROUP BY checkout_type
+          ORDER BY total_sales DESC
+
+      - question: What are sales by Walmart fiscal week?
+        answer: This query shows weekly sales trend using Walmart fiscal calendar (fiscal year starts in February).
+        sql_query: |
+          SELECT
+            WM_YR_WK_NBR,
+            FISCAL_FULL_YR_NBR,
+            WM_WK_NBR,
+            MIN(VISIT_LOCAL_DT) AS week_start,
+            MAX(VISIT_LOCAL_DT) AS week_end,
+            ROUND(SUM(SALES_AMT), 0) AS total_sales,
+            SUM(OPS_UNIT_QTY) AS total_units,
+            COUNT(DISTINCT STORE_NBR) AS stores_with_sales
+          FROM `wmt-edw-prod.US_FIN_SALES_DL_RPT_VM.WMT_STORE_SALES_DTL_D`
+          WHERE FISCAL_FULL_YR_NBR = 2026
+            AND VOID_ITEM_IND = 0
+            AND OTHER_INCOME_IND = 0
+          GROUP BY WM_YR_WK_NBR, FISCAL_FULL_YR_NBR, WM_WK_NBR
+          ORDER BY WM_YR_WK_NBR
+
+      - question: Show clearance vs regular price sales
+        answer: This query compares sales by report code (pricing status) - Regular, Rollback, Clearance, etc.
+        sql_query: |
+          SELECT
+            RPT_CD,
+            RPT_CD_DESC,
+            ROUND(SUM(SALES_AMT), 0) AS total_sales,
+            SUM(OPS_UNIT_QTY) AS units_sold,
+            COUNT(DISTINCT MDS_FAM_ID) AS unique_items,
+            ROUND(SUM(SALES_AMT) / NULLIF(SUM(OPS_UNIT_QTY), 0), 2) AS avg_unit_price
+          FROM `wmt-edw-prod.US_FIN_SALES_DL_RPT_VM.WMT_STORE_SALES_DTL_D`
+          WHERE VISIT_LOCAL_DT >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)  -- Data partitioned on this column
+            AND VOID_ITEM_IND = 0
+            AND RTN_ITEM_IND = 0
+            AND OTHER_INCOME_IND = 0
+          GROUP BY RPT_CD, RPT_CD_DESC
+          ORDER BY total_sales DESC
